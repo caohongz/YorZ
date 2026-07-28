@@ -32,3 +32,6 @@
   - [ ] 优化 Agent 输出效果，终端渲染库
 
 ## Bug
+
+- [ ] 刷新登录态
+- [ ] [Windows 兼容与跨平台稳定性修复](docs/Windows-Compatibility-TODO.md)

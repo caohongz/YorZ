@@ -224,7 +224,9 @@ function pathsNeedingStage(changes: GitChange[], paths: string[]): string[] {
   const out: string[] = []
   for (const p of paths) {
     const change = byPath.get(p)
-    // Not in `git status` at all: a stale selection with nothing to stage.
+    // `git status` omits both clean paths and stale selections. Neither has a
+    // worktree change to stage, and passing a vanished path to `git add` would
+    // abort the whole batch instead of committing the paths that still exist.
     if (!change) continue
     if (change.worktree === ' ') continue
     out.push(p)

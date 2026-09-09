@@ -24,13 +24,40 @@ const DEFAULT_CODEX_STORAGE_ROOT = join(homedir(), '.codex')
 const CODEX_USAGE_URL = 'https://chatgpt.com/backend-api/codex/usage'
 const TITLE_MAX_LENGTH = 64
 
-function codexThreadOptions(cwd: string): ThreadOptions {
+function codexThreadOptions(cwd: string, model?: string): ThreadOptions {
   return {
     workingDirectory: cwd,
     skipGitRepoCheck: true,
     sandboxMode: 'danger-full-access',
     approvalPolicy: 'never',
+    // YorZ 项目级模型覆盖（SDK 0.153+ 的 ThreadOptions.model）：
+    // 未设置时回落 config.toml 的 model.default，保持既有行为。
+    ...(model ? { model } : {}),
   }
+}
+
+/** codex provider/model 的运维级覆盖：env 注入 → CodexOptions.config（SDK 自动转 TOML）。 */
+function codexRuntimeOverrides(): Record<string, unknown> | undefined {
+  const provider = process.env.YORZ_CODEX_PROVIDER?.trim()
+  const baseUrl = process.env.YORZ_CODEX_BASE_URL?.trim()
+  if (!provider && !baseUrl) return undefined
+  const config: Record<string, unknown> = {}
+  if (provider) {
+    config.model_provider = provider
+    config.model_providers = {
+      [provider]: {
+        name: provider,
+        ...(baseUrl ? { base_url: baseUrl } : {}),
+        env_key: 'YORZ_CODEX_API_KEY',
+        wire_api: 'responses',
+      },
+    }
+  }
+  return Object.keys(config).length ? config : undefined
+}
+
+function codexModel(): string | undefined {
+  return process.env.YORZ_CODEX_MODEL?.trim() || undefined
 }
 
 function detectAgentContextKind(text: string): AgentContextKind | undefined {
@@ -282,15 +309,24 @@ export class CodexAdapter implements AgentSdkAdapter {
     private readonly cwd: string,
     private readonly storageRoot = DEFAULT_CODEX_STORAGE_ROOT,
   ) {
-    this.codex = new Codex()
+    this.codex = new Codex({
+      ...(codexRuntimeOverrides() ? { config: codexRuntimeOverrides() } : {}),
+      env: {
+        YORZ_CODEX_API_KEY: process.env.YORZ_CODEX_API_KEY ?? '',
+        VOLCENGINE_API_KEY: process.env.VOLCENGINE_API_KEY ?? '',
+        HTTP_PROXY: process.env.HTTP_PROXY ?? '',
+        HTTPS_PROXY: process.env.HTTPS_PROXY ?? '',
+        NO_PROXY: 'localhost,127.0.0.1',
+      },
+    })
   }
 
   async createSession(): Promise<AgentSession> {
-    return new CodexSession(this.codex.startThread(codexThreadOptions(this.cwd)))
+    return new CodexSession(this.codex.startThread(codexThreadOptions(this.cwd, codexModel())))
   }
 
   async resumeSession(id: string): Promise<AgentSession> {
-    return new CodexSession(this.codex.resumeThread(id, codexThreadOptions(this.cwd)))
+    return new CodexSession(this.codex.resumeThread(id, codexThreadOptions(this.cwd, codexModel())))
   }
 
   /** Walk ~/.codex/sessions, keep rollouts whose session_meta.cwd matches this project. */

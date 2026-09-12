@@ -254,7 +254,19 @@ export class OpenCodeAdapter implements AgentSdkAdapter {
       // port 0 lets the OS pick a free port; the SDK resolves the actual URL
       // from the server's "listening on" stdout line. A fixed port would clash
       // with any other running opencode instance (default 4096).
-      this.booting = createOpencode({ hostname: '127.0.0.1', port: 0 }).catch((err) => {
+      this.booting = createOpencode({
+        hostname: '127.0.0.1',
+        port: 0,
+        config: {
+          permission: {
+            edit: 'allow',
+            bash: 'allow',
+            webfetch: 'allow',
+            doom_loop: 'allow',
+            external_directory: 'allow',
+          },
+        },
+      }).catch((err) => {
         this.booting = null
         throw err
       })

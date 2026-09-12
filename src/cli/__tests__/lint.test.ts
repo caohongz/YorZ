@@ -61,6 +61,8 @@ describe('yorz lint CLI', () => {
     const result = spawnSync(pnpm, ['run', 'build:cli'], {
       cwd: ROOT,
       encoding: 'utf8',
+      // 新版 Node 对无 shell 的 .cmd shim 直接 EINVAL（CVE-2024-27980）。
+      shell: process.platform === 'win32',
     })
     if (result.status !== 0) {
       throw new Error(

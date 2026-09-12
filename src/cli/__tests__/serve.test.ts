@@ -8,6 +8,7 @@ import { promisify } from 'node:util'
 import {
   backgroundArgs,
   backgroundStdio,
+  backgroundWorkerSpawnArgv,
   restartWorkerArgs,
   runStopServe,
   runtimePath,
@@ -57,6 +58,25 @@ describe('serve', () => {
       '/tmp/project',
       '--no-register-cwd',
       '--skip-skill-check',
+    ])
+  })
+
+  it('puts execPath right after the launcher separator so the worker executable resolves', () => {
+    // 回归：launcher 用 `--` 后第一个元素作为 spawn 的可执行文件；缺了 execPath
+    // 会把 entry 脚本当程序执行，CreateProcess 报 Bad EXE Format（spawn EFTYPE）。
+    expect(
+      backgroundWorkerSpawnArgv('C:\\yorz\\serve-launcher.cjs', 'C:\\node\\node.exe', [
+        'D:\\proj\\index.js',
+        'serve',
+        '--foreground',
+      ]),
+    ).toEqual([
+      'C:\\yorz\\serve-launcher.cjs',
+      '--',
+      'C:\\node\\node.exe',
+      'D:\\proj\\index.js',
+      'serve',
+      '--foreground',
     ])
   })
 

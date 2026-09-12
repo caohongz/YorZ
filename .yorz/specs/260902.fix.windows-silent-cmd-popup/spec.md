@@ -1,9 +1,10 @@
 ---
 stage: done
-last_action: 任务全部完成，标记 done
-updated_at: '2026-09-02 11:14:00'
-summary: 修复 Windows 平台下打开项目与执行命令时弹出空白 cmd 窗口的体验问题，需为子进程 spawn 补齐静默（windowsHide）配置。
+last_action: 追加任务修复完成（后台 serve 弹窗根因：无控制台进程 + 漏配 windowsHide；SDK 内部 spawn 经 pnpm patch 修复）
+updated_at: '2026-09-12 14:40:00'
+summary: 修复 Windows 平台下打开项目与执行命令时弹出空白 cmd 窗口的体验问题，需为子进程 spawn 补齐静默（windowsHide）配置；追加修复发布版 yorz serve 后台模式弹窗（serve.ts 快照查询 + codex-sdk/opencode-sdk 内部 spawn 经 pnpm patch 补 windowsHide）。
 ---
+
 
 # Windows 下弹出空白 cmd 窗口
 
@@ -61,6 +62,23 @@ flowchart TD
 </details>
 
 补充说明：「打开项目」本身（`POST /projects` → `registry.add()`）是纯文件系统操作、不 spawn；打开项目后启动 agent 会话触发的防休眠 PowerShell 进程（点 C）与 opencode quota 探测（点 F）才是弹窗来源。另注：`nr` 只是开发者本机工具，仓库内不存在其解析逻辑；GUI「命令」的 `def.cli` 来自项目 `.yorz/config.json`，以 `shell: true` spawn。
+
+### 3.1 追加分析（2026-09-12）：dev:cli 无弹窗、发布版 `yorz serve` 仍弹窗的根因
+
+首轮修复后源码内裸 spawn 已清零，但用户实测：dev:cli（前台）无弹窗；发布版 `yorz serve`（默认后台模式）启动时弹一次，切换 session 时出现「打开+关闭」成对弹窗。根因是 **Windows 控制台继承机制**：
+
+- 前台 `dev:cli`：进程持有终端控制台，子进程默认继承父控制台 → 无论是否带 windowsHide 都不弹新窗口。
+- 后台 `yorz serve`：worker 由 `spawnWithoutWindow(..., { detached: true })` 启动（`DETACHED_PROCESS`），**进程自身没有控制台**；此时任何未带 `windowsHide` 的 console 子程序 spawn 都会被 Windows 新建可见控制台 → 弹窗。
+
+据此复查出三处缺口（首轮清单之外）：
+
+| #   | 位置                                                        | 现状                                       | 触发场景                                                                                    |
+| --- | ----------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| H   | `src/cli/serve.ts:687` `readWindowsProcessSnapshot`         | 裸 `execFileAsync('powershell.exe')` 无 windowsHide | 后台 worker 启动时 `readProcessSnapshot(process.pid)`（recordRuntime 路径）→「启动服务弹 cmd」；`serve stop`/restart 同理 |
+| I   | `@openai/codex-sdk` dist/index.js 内部 `spawn(executablePath, args, { env, signal })` | 无 windowsHide（SDK 不暴露 spawn options） | codex 会话运行/结束 → 弹窗开/关成对                                                          |
+| J   | `@opencode-ai/sdk` dist/server.js（含 v2）内部 `cross-spawn launch('opencode', args, { env })` | 无 windowsHide（SDK 不暴露 spawn options） | 切到 opencode session 首次 `ensure()` 拉起 server → 弹窗；dispose/abort 杀进程 → 窗口关闭 →「切换 session 弹窗」 |
+
+复核排除：`@anthropic-ai/claude-agent-sdk` 内部 `spawnLocalProcess` 已自带 `windowsHide: true`（上游已修）；power-inhibit / session-end-notifier / command-manager taskkill / 命令 spawn / 后台 worker spawn 均已带 windowsHide。SDK 内部 spawn 无法经选项控制，采用 **pnpm patchedDependencies** 补丁修复（补丁随仓库分发，`pnpm install` 时自动应用，对 npm 发布无影响）。另顺手修复 `src/cli/__tests__/lint.test.ts` 的 `spawnSync('pnpm.cmd')` 在新版 Node 下无 shell 直接 EINVAL（exit null）导致整个套件无法在 Windows 运行的既有问题。
 
 ## 4. 技术实现方案
 
@@ -122,7 +140,14 @@ _暂无_
 - [x] src/cli/git.ts:16 git init spawn 选项经 withHiddenWindowsConsole 包裹（验收：tsc --noEmit 通过）
 - [x] 运行 tsc --noEmit 与 vitest 全量验证（验收：零失败）
 
-## 7. 执行记录
+
+## 7. 追加任务
+
+- [open] [fix] 2026-09-12 14:01:46 | 当前项目在 win 设备下，在终端直接运行 dev:cli 脚本不在有 cmd 弹窗；
+  - 描述：当前项目在 win 设备下，在终端直接运行 dev:cli 脚本不在有 cmd 弹窗；
+发布后使用 yorz serve 命令启动服务仍然会有cmd弹窗，且在切换 session 时会自动出现打开、关闭 cmd 弹窗
+
+## 8. 执行记录
 
 - 2026-09-02 10:55:26 新建 spec，进入 plan 阶段。
 - 2026-09-02 10:55:26 plan 阶段完成：完成现状分析（7 处裸 spawn 缺口定位）、技术方案（收敛到 process.ts 封装）、图形化补充与待确认项自检（全部决策可自行查证，无待确认条目）。

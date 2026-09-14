@@ -5,6 +5,7 @@
 // `./fixtures/setup.js`, and keeps globalSetup as an idempotent second seed.
 export {
   E2E_CWD,
+  E2E_FS_HOME,
   SPEC_ID,
   QUESTIONS_SPEC_ID,
   QUESTIONS_FREEFORM_SPEC_ID,

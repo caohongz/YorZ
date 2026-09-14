@@ -317,6 +317,8 @@ export interface FsListResult {
   path: string
   parent: string | null
   sep: string
+  /** 服务端用户主目录；win32 缺省落点是盘符层，没有它「主目录」就没有入口。 */
+  home: string
   entries: FsListEntry[]
   truncated: boolean
 }
@@ -480,6 +482,19 @@ export const api = {
     const qs = params.toString()
     return request<FsListResult>(`/api/fs/list${qs ? `?${qs}` : ''}`)
   },
+  /**
+   * 在指定父目录下新建单层目录，供目录选择器的「新建文件夹」使用。
+   *
+   * @param parent 父目录绝对路径。
+   * @param name 新目录名（单层，不含分隔符）。
+   * @returns 新目录的归一化绝对路径；非 2xx 抛错，由调用方渲染 inline 提示。
+   */
+  createDir: (parent: string, name: string) =>
+    request<{ path: string }>('/api/fs/mkdir', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ parent, name }),
+    }),
   /**
    * 添加项目，语义与 CLI `yorz add` 对齐。
    *

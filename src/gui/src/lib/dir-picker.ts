@@ -56,21 +56,20 @@ export function joinDir(parent: string, name: string, sep: string): string {
 }
 
 /**
- * 判断用户手输/粘贴的字符串是否为绝对路径。
+ * 判断「新建文件夹」输入的名称是否可用。
  *
- * 同时接受 POSIX（`/foo`）、win32 盘符（`C:\foo`、`c:/foo`）与 UNC（`\\server\share`），
- * 因为前端不知道后端跑在哪个平台，宽松放行、由后端做权威校验。
+ * 只做即时可用性判断（用于禁用提交按钮），故意宽松：不知道后端跑在哪个平台，
+ * Windows 保留名/保留字符一类的权威校验交给 `POST /api/fs/mkdir`。
  *
- * @param raw 原始输入。
- * @returns 形如绝对路径时为 true。
+ * @param raw 原始输入（允许首尾空白）。
+ * @returns 非空、不含路径分隔符、不是 `.` / `..` 时为 true。
  */
-export function isAbsolutePathInput(raw: string): boolean {
+export function isValidDirName(raw: string): boolean {
   const value = raw.trim()
   if (!value) return false
-  if (value.startsWith('/')) return true
-  if (/^[A-Za-z]:[\\/]/.test(value)) return true
-  if (value.startsWith('\\\\')) return true
-  return false
+  if (value === '.' || value === '..') return false
+  if (value.includes('/') || value.includes('\\')) return false
+  return true
 }
 
 function appendSegments(root: string, rest: string, sep: string): BreadcrumbSegment[] {

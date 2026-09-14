@@ -10,6 +10,11 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..', '..')
 
 export const E2E_CWD = join(REPO_ROOT, '.tmp-e2e')
+// Isolated HOME for the e2e `serve`: the directory picker's default landing point is
+// the service process's `os.homedir()`, and the picker has no path input anymore — so
+// fixtures must live inside HOME to be reachable by clicking. Keeps the real user's
+// home clean. Mirrored as a literal in playwright.config.ts (webServer.env).
+export const E2E_FS_HOME = join(REPO_ROOT, '.tmp-e2e-fs-home')
 export const SPEC_ID = '260616.feat.e2e-seed'
 export const QUESTIONS_SPEC_ID = '260618.feat.e2e-questions'
 // Dedicated spec for the freeform-annotation test. Answering a question triggers
@@ -153,6 +158,9 @@ summary: Playwright e2e 用于验证 GFM 任务列表 checkbox 渲染
 
 export function seed() {
   rmSync(E2E_CWD, { recursive: true, force: true })
+  // Only ensure-exists (no rm): the serve process already points HOME here, and
+  // add-project specs create/remove their own fixtures underneath it.
+  mkdirSync(E2E_FS_HOME, { recursive: true })
   const baseDir = join(E2E_CWD, '.yorz', 'specs', SPEC_ID)
   mkdirSync(baseDir, { recursive: true })
   writeFileSync(join(baseDir, 'spec.md'), SEED_SPEC, 'utf8')

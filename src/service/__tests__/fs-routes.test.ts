@@ -1,9 +1,9 @@
-import { mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { realpathSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { createFsRoutes, resolveParent, type FsListResult } from '../routes/fs.js'
+import { createFsRoutes, resolveParent, validateDirName, type FsListResult } from '../routes/fs.js'
 
 async function fixture(): Promise<string> {
   // macOS 的 tmpdir 是 /var → /private/var 软链，realpath 后才能和路由归一化结果对齐。
@@ -104,6 +104,113 @@ describe('GET /fs/list', () => {
     expect(body.sep).toBe('\\')
     // 非 Windows 上探测不到任何盘符，这里只约束层级语义与 sep。
     expect(Array.isArray(body.entries)).toBe(true)
+  })
+
+  it('win32 下缺省 path 也落在盘符列表层（而非主目录）', async () => {
+    const root = await fixture()
+    const app = createFsRoutes({ platform: 'win32', homedir: () => root })
+    const body = await list(app, '')
+
+    expect(body.path).toBe('')
+    expect(body.parent).toBeNull()
+  })
+
+  it('响应始终回填 home，供前端渲染「主目录」入口', async () => {
+    const root = await fixture()
+    const posix = createFsRoutes({ platform: 'darwin', homedir: () => root })
+    expect((await list(posix, '')).home).toBe(root)
+
+    // win32 盘符层同样带 home，否则 Windows 上主目录将失去入口。
+    const win = createFsRoutes({ platform: 'win32', homedir: () => 'C:\\Users\\me' })
+    expect((await list(win, '')).home).toBe('C:\\Users\\me')
+  })
+})
+
+async function mkdirReq(
+  app: ReturnType<typeof createFsRoutes>,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  return app.request('/fs/mkdir', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+describe('POST /fs/mkdir', () => {
+  it('在已存在的父目录下创建单层目录', async () => {
+    const root = await fixture()
+    const app = createFsRoutes({ platform: 'darwin' })
+    const res = await mkdirReq(app, { parent: root, name: 'gamma' })
+
+    expect(res.status).toBe(201)
+    expect(((await res.json()) as { path: string }).path).toBe(join(root, 'gamma'))
+    expect((await stat(join(root, 'gamma'))).isDirectory()).toBe(true)
+  })
+
+  it('目录已存在返回 409', async () => {
+    const root = await fixture()
+    const app = createFsRoutes({ platform: 'darwin' })
+    const res = await mkdirReq(app, { parent: root, name: 'alpha' })
+
+    expect(res.status).toBe(409)
+  })
+
+  it('名称含路径分隔符或 .. 一律 400，且不产生目录', async () => {
+    const root = await fixture()
+    const app = createFsRoutes({ platform: 'darwin' })
+
+    expect((await mkdirReq(app, { parent: root, name: 'a/b' })).status).toBe(400)
+    expect((await mkdirReq(app, { parent: root, name: '..' })).status).toBe(400)
+    expect((await mkdirReq(app, { parent: root, name: '   ' })).status).toBe(400)
+    expect((await mkdirReq(app, { parent: root, name: '..\\escape' })).status).toBe(400)
+    await expect(stat(join(dirname(root), 'escape'))).rejects.toThrow()
+  })
+
+  it('parent 不存在 / 非绝对路径 / 盘符层返回 400', async () => {
+    const root = await fixture()
+    const app = createFsRoutes({ platform: 'darwin' })
+
+    expect((await mkdirReq(app, { parent: join(root, 'nope'), name: 'x' })).status).toBe(400)
+    expect((await mkdirReq(app, { parent: 'relative/dir', name: 'x' })).status).toBe(400)
+    expect((await mkdirReq(app, { parent: '', name: 'x' })).status).toBe(400)
+  })
+
+  it('parent 指向文件返回 400', async () => {
+    const root = await fixture()
+    const app = createFsRoutes({ platform: 'darwin' })
+    const res = await mkdirReq(app, { parent: join(root, 'a-file.txt'), name: 'x' })
+
+    expect(res.status).toBe(400)
+    expect(((await res.json()) as { error: string }).error).toMatch(/not a directory/)
+  })
+})
+
+describe('validateDirName', () => {
+  it('接受普通目录名', () => {
+    expect(validateDirName('repo', 'darwin')).toBeNull()
+    expect(validateDirName('  my-repo ', 'darwin')).toBeNull()
+    expect(validateDirName('我的项目', 'win32')).toBeNull()
+  })
+
+  it('拒绝空/点目录/分隔符/超长/控制字符', () => {
+    expect(validateDirName('', 'darwin')).toMatch(/empty/)
+    expect(validateDirName('.', 'darwin')).toMatch(/"\."/)
+    expect(validateDirName('..', 'darwin')).toMatch(/"\."/)
+    expect(validateDirName('a/b', 'darwin')).toMatch(/separator/)
+    expect(validateDirName('a\\b', 'darwin')).toMatch(/separator/)
+    expect(validateDirName('x'.repeat(256), 'darwin')).toMatch(/too long/)
+    expect(validateDirName('a\u0001b', 'darwin')).toMatch(/control/)
+  })
+
+  it('win32 额外拒绝保留字符、保留设备名与尾随点号空格', () => {
+    expect(validateDirName('a?b', 'win32')).toMatch(/Windows/)
+    expect(validateDirName('CON', 'win32')).toMatch(/reserved/)
+    expect(validateDirName('com1.txt', 'win32')).toMatch(/reserved/)
+    expect(validateDirName('repo.', 'win32')).toMatch(/dot or space/)
+    // 同样的名称在 POSIX 上是合法的
+    expect(validateDirName('CON', 'linux')).toBeNull()
+    expect(validateDirName('a?b', 'linux')).toBeNull()
   })
 })
 

@@ -1,4 +1,5 @@
 export const E2E_CWD: string
+export const E2E_FS_HOME: string
 export const SPEC_ID: string
 export const QUESTIONS_SPEC_ID: string
 export const QUESTIONS_FREEFORM_SPEC_ID: string

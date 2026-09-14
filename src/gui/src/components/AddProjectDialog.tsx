@@ -1,11 +1,20 @@
-import { For, Show, createSignal, type Component } from 'solid-js'
-import { ChevronRight, CornerLeftUp, Folder, Monitor } from 'lucide-solid'
+import { For, Show, createEffect, createSignal, on, type Component } from 'solid-js'
+import {
+  ChevronRight,
+  CornerLeftUp,
+  Folder,
+  FolderPlus,
+  HelpCircle,
+  Home,
+  Monitor,
+} from 'lucide-solid'
 import { api, type FsListResult } from '../lib/api.js'
-import { isAbsolutePathInput, joinDir, splitBreadcrumb } from '../lib/dir-picker.js'
+import { isValidDirName, joinDir, splitBreadcrumb } from '../lib/dir-picker.js'
 import { Button } from './ui/button.jsx'
 import { Input } from './ui/input.jsx'
 import { Checkbox, CheckboxControl, CheckboxLabel } from './ui/checkbox.jsx'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog.jsx'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip.jsx'
 import { t } from '../i18n/index.js'
 
 export interface AddProjectDialogProps {
@@ -16,27 +25,35 @@ export interface AddProjectDialogProps {
 }
 
 /**
- * 添加项目对话框：内置一个简洁的本地目录选择器。
+ * 添加项目对话框：内置一个纯点选的本地目录选择器。
  *
  * 目录数据全部来自后端 `GET /api/fs/list`——浏览器拿不到真实文件系统，也不知道
- * 后端跑在哪个平台，因此路径拼接一律使用响应里的 `sep`（见 `lib/dir-picker.ts`）。
+ * 后端跑在哪个平台，因此路径拼接一律使用响应里的 `sep`（见 `lib/dir-picker.ts`），
+ * 「主目录」按钮的目标也取自响应里的 `home`。缺省落点由后端按平台决定：POSIX 是
+ * 主目录，Windows 是盘符列表页。
+ *
  * 目标不是 git 仓库时后端返回 409，这里弹二次确认后带 `gitInit: true` 重试。
  */
 export const AddProjectDialog: Component<AddProjectDialogProps> = (props) => {
   const [listing, setListing] = createSignal<FsListResult | null>(null)
   const [loading, setLoading] = createSignal(false)
   const [error, setError] = createSignal<string | null>(null)
-  const [pathInput, setPathInput] = createSignal('')
   const [showHidden, setShowHidden] = createSignal(false)
   const [submitting, setSubmitting] = createSignal(false)
   const [needGitInit, setNeedGitInit] = createSignal<string | null>(null)
+  const [creating, setCreating] = createSignal(false)
+  const [newName, setNewName] = createSignal('')
+  const [createBusy, setCreateBusy] = createSignal(false)
 
-  /** 当前选中的目录；盘符列表层没有可选目录。 */
+  /** 当前选中的目录；盘符列表层（win32 的「此电脑」）没有可选目录。 */
   const currentDir = (): string | null => {
     const l = listing()
     if (!l || l.path === '') return null
     return l.path
   }
+
+  /** 后端跑在 Windows 上时才有「此电脑」这一虚拟层级。 */
+  const isWindows = (): boolean => listing()?.sep === '\\'
 
   async function load(path?: string): Promise<void> {
     setLoading(true)
@@ -44,7 +61,6 @@ export const AddProjectDialog: Component<AddProjectDialogProps> = (props) => {
     try {
       const result = await api.listDirs(path, showHidden())
       setListing(result)
-      setPathInput(result.path)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -52,27 +68,49 @@ export const AddProjectDialog: Component<AddProjectDialogProps> = (props) => {
     }
   }
 
-  function onOpenChange(open: boolean): void {
-    props.onOpenChange(open)
-    if (open) {
-      setNeedGitInit(null)
-      setError(null)
-      void load()
-    } else {
-      setListing(null)
-      setPathInput('')
-    }
+  // 打开/关闭的副作用挂在 props.open 上而非 Kobalte 的 onOpenChange：弹窗由调用方
+  // 的信号受控，外部把 open 置 true 时 onOpenChange 根本不会触发，首帧就拿不到目录。
+  createEffect(
+    on(
+      () => props.open,
+      (open) => {
+        if (open) {
+          setNeedGitInit(null)
+          setError(null)
+          cancelCreate()
+          void load()
+        } else {
+          setListing(null)
+          cancelCreate()
+        }
+      },
+    ),
+  )
+
+  function cancelCreate(): void {
+    setCreating(false)
+    setNewName('')
   }
 
-  function gotoInput(): void {
-    const raw = pathInput().trim()
-    if (!raw) return
-    if (raw === listing()?.path) return
-    if (!isAbsolutePathInput(raw)) {
-      setError(t('addProject.invalidPath'))
+  async function createDir(): Promise<void> {
+    const parent = currentDir()
+    const name = newName().trim()
+    if (!parent || !isValidDirName(name)) {
+      setError(t('addProject.invalidName'))
       return
     }
-    void load(raw)
+    setCreateBusy(true)
+    setError(null)
+    try {
+      const created = await api.createDir(parent, name)
+      cancelCreate()
+      // 直接进入新建的目录：用户多半就是要把它选作项目目录。
+      await load(created.path)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setCreateBusy(false)
+    }
   }
 
   async function submit(gitInit: boolean): Promise<void> {
@@ -97,10 +135,36 @@ export const AddProjectDialog: Component<AddProjectDialogProps> = (props) => {
   }
 
   return (
-    <Dialog open={props.open} onOpenChange={onOpenChange}>
-      <DialogContent class="max-w-xl">
+    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+      <DialogContent
+        class="max-w-xl"
+        // 弹窗挂载时 Kobalte 默认聚焦第一个可 Tab 元素——这里恰是标题旁的 `?`，而
+        // Kobalte TooltipTrigger 对任何聚焦（含程序化聚焦）都会展开提示，导致一打开
+        // 弹窗 CLI 提示就浮出。改为把焦点放在对话框容器上（tabIndex=-1，Kobalte 自身
+        // 的兜底行为），Tab 仍能依次走进内部控件。
+        onOpenAutoFocus={(e: Event) => {
+          e.preventDefault()
+          const container = e.currentTarget
+          if (container instanceof HTMLElement) container.focus()
+        }}
+      >
         <DialogHeader>
-          <DialogTitle>{t('addProject.title')}</DialogTitle>
+          <div class="flex items-center gap-1.5">
+            <DialogTitle>{t('addProject.title')}</DialogTitle>
+            <Tooltip openDelay={150} closeDelay={0}>
+              <TooltipTrigger
+                as={Button}
+                type="button"
+                variant="ghost"
+                size="icon"
+                class="h-6 w-6 text-muted-foreground"
+                aria-label={t('addProject.help')}
+              >
+                <HelpCircle class="h-4 w-4" />
+              </TooltipTrigger>
+              <TooltipContent>{t('addProject.helpTooltip')}</TooltipContent>
+            </Tooltip>
+          </div>
         </DialogHeader>
 
         <Show
@@ -128,48 +192,102 @@ export const AddProjectDialog: Component<AddProjectDialogProps> = (props) => {
           }
         >
           <div class="grid gap-3">
-            <label class="grid gap-2 text-sm font-medium" for="add-project-path">
-              {t('addProject.pathLabel')}
-              <Input
-                id="add-project-path"
-                value={pathInput()}
-                placeholder={t('addProject.pathPlaceholder')}
-                disabled={submitting()}
-                onInput={(e) => setPathInput(e.currentTarget.value)}
-                onBlur={gotoInput}
-                onKeyDown={(e: KeyboardEvent) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    gotoInput()
-                  }
-                }}
-              />
-            </label>
-
-            <div class="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
-              <button
+            <div class="flex items-center gap-1">
+              <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1 text-sm text-muted-foreground">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded px-1 py-0.5 hover:bg-accent hover:text-accent-foreground"
+                  aria-label={t('addProject.home')}
+                  title={t('addProject.home')}
+                  disabled={!listing()}
+                  onClick={() => void load(listing()?.home)}
+                >
+                  <Home class="h-3.5 w-3.5" />
+                </button>
+                <Show when={isWindows()}>
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 rounded px-1 py-0.5 hover:bg-accent hover:text-accent-foreground"
+                    aria-label={t('addProject.driveRoot')}
+                    title={t('addProject.driveRoot')}
+                    onClick={() => void load('')}
+                  >
+                    <Monitor class="h-3.5 w-3.5" />
+                  </button>
+                </Show>
+                <For each={splitBreadcrumb(listing()?.path ?? '', listing()?.sep ?? '/')}>
+                  {(seg) => (
+                    <>
+                      <ChevronRight class="h-3 w-3 shrink-0 opacity-50" />
+                      <button
+                        type="button"
+                        class="rounded px-1 py-0.5 hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => void load(seg.path)}
+                      >
+                        {seg.label}
+                      </button>
+                    </>
+                  )}
+                </For>
+              </div>
+              <Button
                 type="button"
-                class="inline-flex items-center gap-1 rounded px-1 py-0.5 hover:bg-accent hover:text-accent-foreground"
-                title={t('addProject.driveRoot')}
-                onClick={() => void load('')}
+                variant="ghost"
+                size="icon"
+                class="h-7 w-7 shrink-0"
+                aria-label={t('addProject.newFolder')}
+                title={t('addProject.newFolder')}
+                disabled={!currentDir() || loading() || submitting()}
+                onClick={() => {
+                  setError(null)
+                  setCreating(true)
+                }}
               >
-                <Monitor class="h-3.5 w-3.5" />
-              </button>
-              <For each={splitBreadcrumb(listing()?.path ?? '', listing()?.sep ?? '/')}>
-                {(seg) => (
-                  <>
-                    <ChevronRight class="h-3 w-3 shrink-0 opacity-50" />
-                    <button
-                      type="button"
-                      class="rounded px-1 py-0.5 hover:bg-accent hover:text-accent-foreground"
-                      onClick={() => void load(seg.path)}
-                    >
-                      {seg.label}
-                    </button>
-                  </>
-                )}
-              </For>
+                <FolderPlus class="h-4 w-4" />
+              </Button>
             </div>
+
+            <Show when={creating()}>
+              <div class="flex items-center gap-2">
+                <Input
+                  id="add-project-new-folder"
+                  class="h-8"
+                  autofocus
+                  value={newName()}
+                  placeholder={t('addProject.newFolderPlaceholder')}
+                  disabled={createBusy()}
+                  onInput={(e) => setNewName(e.currentTarget.value)}
+                  onKeyDown={(e: KeyboardEvent) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      void createDir()
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault()
+                      cancelCreate()
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  class="shrink-0"
+                  disabled={createBusy() || !isValidDirName(newName())}
+                  onClick={() => void createDir()}
+                >
+                  {t('addProject.newFolderConfirm')}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  class="shrink-0"
+                  disabled={createBusy()}
+                  onClick={cancelCreate}
+                >
+                  {t('common.cancel')}
+                </Button>
+              </div>
+            </Show>
 
             <div class="h-64 overflow-y-auto rounded border">
               <Show

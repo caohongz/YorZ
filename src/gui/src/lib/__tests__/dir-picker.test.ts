@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isAbsolutePathInput, joinDir, splitBreadcrumb } from '../dir-picker.js'
+import { isValidDirName, joinDir, splitBreadcrumb } from '../dir-picker.js'
 
 describe('splitBreadcrumb', () => {
   it('POSIX 路径逐级展开，根段为 /', () => {
@@ -55,20 +55,21 @@ describe('joinDir', () => {
   })
 })
 
-describe('isAbsolutePathInput', () => {
-  it('接受 POSIX、盘符与 UNC 形态', () => {
-    expect(isAbsolutePathInput('/Users/me')).toBe(true)
-    expect(isAbsolutePathInput('C:\\work')).toBe(true)
-    expect(isAbsolutePathInput('c:/work')).toBe(true)
-    expect(isAbsolutePathInput('\\\\server\\share')).toBe(true)
-    expect(isAbsolutePathInput('  /Users/me  ')).toBe(true)
+describe('isValidDirName', () => {
+  it('接受普通目录名（含空白包裹与中文）', () => {
+    expect(isValidDirName('repo')).toBe(true)
+    expect(isValidDirName('  my-repo  ')).toBe(true)
+    expect(isValidDirName('我的项目')).toBe(true)
+    expect(isValidDirName('.hidden')).toBe(true)
   })
 
-  it('拒绝空串与相对路径', () => {
-    expect(isAbsolutePathInput('')).toBe(false)
-    expect(isAbsolutePathInput('   ')).toBe(false)
-    expect(isAbsolutePathInput('code/repo')).toBe(false)
-    expect(isAbsolutePathInput('./repo')).toBe(false)
-    expect(isAbsolutePathInput('C:')).toBe(false)
+  it('拒绝空串、点目录与含分隔符的名称', () => {
+    expect(isValidDirName('')).toBe(false)
+    expect(isValidDirName('   ')).toBe(false)
+    expect(isValidDirName('.')).toBe(false)
+    expect(isValidDirName('..')).toBe(false)
+    expect(isValidDirName('a/b')).toBe(false)
+    expect(isValidDirName('a\\b')).toBe(false)
+    expect(isValidDirName('../escape')).toBe(false)
   })
 })

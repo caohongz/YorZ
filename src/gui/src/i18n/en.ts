@@ -51,7 +51,25 @@ export const en = {
     title: 'Welcome to YorZ',
     description:
       'YorZ hosts spec documents in local directories. Add a project directory first, then start managing its requirements.',
-    addHint: 'To add a project, run in terminal:',
+  },
+  addProject: {
+    trigger: 'Add Project',
+    title: 'Add Project',
+    pathLabel: 'Project directory',
+    pathPlaceholder: 'Type or paste an absolute path',
+    parent: 'Parent directory',
+    driveRoot: 'This PC',
+    empty: 'No subdirectories here',
+    truncated: 'Too many subdirectories; showing the first 1000',
+    showHidden: 'Show hidden directories',
+    choose: 'Choose this directory',
+    loading: 'Loading…',
+    invalidPath: 'Please enter an absolute path',
+    gitInitTitle: 'Not a git repository',
+    gitInitDesc:
+      '{{path}} has not been git-initialized. The git panel and worktree features require a git repository.',
+    gitInitConfirm: 'Run git init and add',
+    failed: 'Failed to add: {{message}}',
   },
   sidebar: {
     title: 'Projects',
@@ -67,8 +85,6 @@ export const en = {
     deleteFiles: 'Also delete file directory',
     uncommittedChanges: 'Uncommitted git changes',
     resizeHint: 'Drag to resize project panel width',
-    addHint: 'To add a project, run in terminal:',
-    addCmd: 'yorz add <path>',
   },
   chat: {
     title: 'Chat',

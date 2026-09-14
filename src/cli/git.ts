@@ -1,28 +1,5 @@
-import { spawn, type SpawnOptions } from 'node:child_process'
-import { stat } from 'node:fs/promises'
-import { join } from 'node:path'
-import { withHiddenWindowsConsole } from '../service/process.js'
-
-export async function isGitRepo(cwd: string): Promise<boolean> {
-  try {
-    await stat(join(cwd, '.git'))
-    return true
-  } catch {
-    return false
-  }
-}
-
-export async function runGitInit(cwd: string): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(
-      'git',
-      ['init'],
-      withHiddenWindowsConsole<SpawnOptions>({ cwd, stdio: 'inherit' }),
-    )
-    child.on('error', reject)
-    child.on('exit', (code) => {
-      if (code === 0) resolve()
-      else reject(new Error(`git init exited with code ${code}`))
-    })
-  })
-}
+/**
+ * 仓库级 git 能力已下沉到 service 层（`src/service/git-repo.ts`），供 CLI 与
+ * HTTP 路由共用。此处保留再导出，避免改动全部 CLI 调用点。
+ */
+export { isGitRepo, runGitInit, type RunGitInitOptions } from '../service/git-repo.js'

@@ -4,6 +4,7 @@ import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { type CustomInstruction, normalizeCustomInstructions } from './custom-instruction.js'
+import { samePath } from './path-normalize.js'
 
 export interface WorktreeMeta {
   mainProjectId: string
@@ -415,13 +416,26 @@ export interface AddProjectResult {
   created: boolean
 }
 
+/**
+ * 把项目路径写入全局注册表，按路径去重（幂等）。
+ *
+ * 去重比较是**平台感知**的：win32 文件系统大小写不敏感，`C:\Repo` 与 `c:\repo`
+ * 指向同一目录，若按字符串精确比较会注册成两个项目。POSIX 维持大小写敏感。
+ *
+ * @param absPath 已归一化的项目绝对路径。
+ * @param filePath 覆盖全局配置文件位置，主要供测试注入。
+ * @param now 时间注入点。
+ * @param platform 平台注入点，决定去重比较是否大小写敏感。
+ * @returns 注册条目；`created: false` 表示此前已注册。
+ */
 export async function addProject(
   absPath: string,
   filePath?: string,
   now: () => Date = () => new Date(),
+  platform: NodeJS.Platform = process.platform,
 ): Promise<AddProjectResult> {
   const config = await loadGlobalConfig(filePath)
-  const existing = config.projects.find((p) => p.path === absPath)
+  const existing = config.projects.find((p) => samePath(p.path, absPath, platform))
   if (existing) return { entry: existing, created: false }
   const entry: GlobalProjectEntry = {
     id: generateProjectId(absPath),

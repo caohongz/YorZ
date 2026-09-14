@@ -26,6 +26,13 @@ export interface SseSubscription {
 
 type TopicHandler = (event: string, data: unknown) => void
 
+// --- 看门狗参数 ---
+// 服务端每 HEARTBEAT_INTERVAL_MS(5s) 发一次 `server-heartbeat`，所以「连续多久没有
+// 任何帧」是判定连接是否还活着的可靠信号。给 3 个心跳周期的余量，避免主线程卡顿
+// 或后台标签页定时器被节流时误判重连。
+const STALE_AFTER_MS = 16_000
+const WATCHDOG_INTERVAL_MS = 5_000
+
 function generateClientId(): string {
   const g = globalThis as { crypto?: { randomUUID?: () => string } }
   if (g.crypto?.randomUUID) return g.crypto.randomUUID()
@@ -39,6 +46,9 @@ class SseMultiplex {
   private syncTimer: ReturnType<typeof setTimeout> | null = null
   private syncInFlight = false
   private syncPending = false
+  private lastFrameAt = 0
+  private watchdogTimer: ReturnType<typeof setInterval> | null = null
+  private visibilityBound = false
 
   subscribe(topic: string, handler: TopicHandler): () => void {
     let set = this.handlers.get(topic)
@@ -67,11 +77,15 @@ class SseMultiplex {
     const url = `/api/events/stream?clientId=${encodeURIComponent(this.clientId)}`
     const source = new EventSource(url)
     this.source = source
+    this.lastFrameAt = Date.now()
+    this.startWatchdog()
     source.addEventListener('open', () => {
+      this.lastFrameAt = Date.now()
       // On (re)connect the server has a fresh session — flush our topics.
       this.scheduleSync(true)
     })
     source.addEventListener('server-heartbeat', (e) => {
+      this.lastFrameAt = Date.now()
       let data: unknown = { ts: Date.now() }
       try {
         data = JSON.parse((e as MessageEvent).data)
@@ -91,6 +105,7 @@ class SseMultiplex {
       }
     })
     source.addEventListener('msg', (e) => {
+      this.lastFrameAt = Date.now()
       let payload: { topic: string; event: string; data: unknown }
       try {
         payload = JSON.parse((e as MessageEvent).data)
@@ -108,8 +123,62 @@ class SseMultiplex {
       }
     })
     source.addEventListener('error', () => {
-      // EventSource auto-reconnects; no-op
+      // 不在这里重连：浏览器对「网络层断开」本就会自己重试（readyState 回到
+      // CONNECTING）；而 HTTP 错误码（反向代理在后端不可用时回的 500/502）会让它
+      // 直接进入 CLOSED 且永不重试——那种情况由看门狗按固定节奏接管，避免在这里
+      // 同步重连打成一个高频空转的重试风暴。
     })
+  }
+
+  // ---------------------------------------------------------------------------
+  // 连接看门狗
+  // ---------------------------------------------------------------------------
+  //
+  // 为什么不能只信 EventSource 自己的重连：Service 重启时，如果中间隔着反向代理
+  // （dev 的 vite proxy、移动端的 tailscale serve），代理与后端的上游连接断了，但
+  // 浏览器 ↔ 代理这一段仍保持打开。此时 EventSource 停在 readyState === OPEN，既不
+  // 报 error 也不重连，成为一条永不再有数据的「僵尸连接」——页面上所有实时更新
+  // （项目列表 / spec 列表 / 会话状态 / 命令输出）从此静默失效，直到用户手动刷新。
+  //
+  // 服务端每 5s 一次的 `server-heartbeat` 正是为此准备的活性信号：只要连续
+  // STALE_AFTER_MS 没有任何帧，就判定连接已死并强制重建（新 EventSource 的 open
+  // 会触发 scheduleSync(true)，把全部 topic 重新订阅回去）。
+
+  private startWatchdog(): void {
+    if (this.watchdogTimer === null) {
+      const timer = setInterval(() => this.checkAlive(), WATCHDOG_INTERVAL_MS)
+      ;(timer as { unref?: () => void }).unref?.()
+      this.watchdogTimer = timer
+    }
+    // 后台标签页的定时器会被浏览器节流到分钟级，回到前台时立即补一次检查，
+    // 避免用户切回来后还要干等一个节流周期。
+    if (!this.visibilityBound && typeof document !== 'undefined') {
+      this.visibilityBound = true
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) this.checkAlive()
+      })
+    }
+  }
+
+  private checkAlive(): void {
+    const source = this.source
+    if (!source) return
+    const stale = Date.now() - this.lastFrameAt > STALE_AFTER_MS
+    // CLOSED 表示浏览器已彻底放弃该连接（例如代理回了 HTTP 错误码），必须我们自己重建。
+    const dead = source.readyState === 2
+    if (!stale && !dead) return
+    this.reconnect()
+  }
+
+  private reconnect(): void {
+    const source = this.source
+    this.source = null
+    try {
+      source?.close()
+    } catch {
+      // best-effort
+    }
+    this.ensureOpen()
   }
 
   private scheduleSync(immediate: boolean = false): void {
@@ -144,11 +213,31 @@ class SseMultiplex {
       }
     }
   }
+
+  /** 关掉连接与看门狗定时器。仅测试用——生产里 mux 与页面同生命周期。 */
+  dispose(): void {
+    if (this.watchdogTimer !== null) {
+      clearInterval(this.watchdogTimer)
+      this.watchdogTimer = null
+    }
+    if (this.syncTimer !== null) {
+      clearTimeout(this.syncTimer)
+      this.syncTimer = null
+    }
+    try {
+      this.source?.close()
+    } catch {
+      // best-effort
+    }
+    this.source = null
+    this.handlers.clear()
+  }
 }
 
 // Overridable for tests (mux is stateful and would leak across cases otherwise).
 let mux = new SseMultiplex()
 export function __resetMuxForTests(): void {
+  mux.dispose()
   mux = new SseMultiplex()
 }
 

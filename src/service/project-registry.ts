@@ -26,6 +26,7 @@ import {
   type GlobalProjectEntry,
   type WorktreeMeta,
 } from './global-config.js'
+import { addProjectWithGit, type AddProjectWithGitResult } from './project-add.js'
 import type { AgentKind } from './agent-sdk/types.js'
 
 export interface ProjectInstance {
@@ -130,6 +131,26 @@ export class ProjectRegistry {
     if (!isAbsolute(absPath)) throw new Error(`path must be absolute: ${absPath}`)
     const normalized = await prepareProjectDir(absPath)
     return await addProject(normalized, this.globalConfigPath)
+  }
+
+  /**
+   * 与 CLI `yorz add` 语义对齐的添加：含 git 仓库检查 / `git init` / `.gitignore` 写入。
+   *
+   * @param absPath 项目目录绝对路径（调用方需先归一化）。
+   * @param opts `gitInit` 为 true 时授权对非 git 目录自动执行 `git init`。
+   * @returns 注册结果。
+   * @throws {NeedGitInitError} 目标非 git 仓库且未授权 `git init`；此时无任何副作用。
+   */
+  async addWithGit(
+    absPath: string,
+    opts: { gitInit?: boolean } = {},
+  ): Promise<AddProjectWithGitResult> {
+    if (!isAbsolute(absPath)) throw new Error(`path must be absolute: ${absPath}`)
+    return await addProjectWithGit({
+      path: absPath,
+      gitInit: opts.gitInit === true,
+      ...(this.globalConfigPath !== undefined ? { globalConfigPath: this.globalConfigPath } : {}),
+    })
   }
 
   async remove(id: string): Promise<boolean> {

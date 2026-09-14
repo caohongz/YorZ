@@ -1,7 +1,7 @@
 import { createInterface } from 'node:readline/promises'
-import { addProject, prepareProjectDir, type GlobalProjectEntry } from '../service/global-config.js'
-import { isGitRepo, runGitInit } from './git.js'
-import { ensureTmpIgnored } from './install.js'
+import type { GlobalProjectEntry } from '../service/global-config.js'
+import { addProjectWithGit, NeedGitInitError } from '../service/project-add.js'
+import { runGitInit } from './git.js'
 
 export interface RunAddOptions {
   path: string
@@ -40,36 +40,45 @@ async function defaultPrompt(question: string): Promise<string> {
   }
 }
 
+/**
+ * CLI `yorz add` 的入口：在共享的 {@link addProjectWithGit} 之上补 TTY 交互确认。
+ *
+ * 非 git 仓库时 `addProjectWithGit` 会零副作用地抛 {@link NeedGitInitError}，
+ * 这里据此询问用户（或按 `--yes` 直接放行），确认后带 `gitInit: true` 重试。
+ *
+ * @param opts 目标路径与交互/测试注入点。
+ * @returns 注册结果。
+ * @throws {AddGitAbortedError} 用户拒绝 `git init`，或非交互环境下未传 `--yes`。
+ */
 export async function runAdd(opts: RunAddOptions): Promise<RunAddResult> {
-  const abs = await prepareProjectDir(opts.path, opts.cwd)
-  const gitInit = opts.runGitInit ?? runGitInit
-  const isTTY = opts.isTTY ?? Boolean(process.stdin.isTTY && process.stdout.isTTY)
-
-  let gitInitialized = false
-  if (!(await isGitRepo(abs))) {
-    if (opts.yes) {
-      await gitInit(abs)
-      gitInitialized = true
-    } else if (isTTY) {
-      const ask = opts.prompt ?? defaultPrompt
-      const raw = await ask(`yorz add: ${abs} 未 git init，是否自动执行 \`git init\`? [y/N] `)
-      const answer = raw.trim().toLowerCase()
-      if (answer === 'y' || answer === 'yes') {
-        await gitInit(abs)
-        gitInitialized = true
-      } else {
-        throw new AddGitAbortedError(
-          `yorz add: aborted — target directory is not a git repository`,
-        )
-      }
-    } else {
-      throw new AddGitAbortedError(
-        `yorz add: target directory is not a git repository; pass --yes to auto-run git init in non-interactive mode`,
-      )
-    }
+  // CLI 侧保持 stdio: 'inherit'，让用户直接看到 git 输出。
+  const gitInit = opts.runGitInit ?? ((cwd: string) => runGitInit(cwd))
+  const base = {
+    path: opts.path,
+    ...(opts.cwd !== undefined ? { cwd: opts.cwd } : {}),
+    ...(opts.globalConfigPath !== undefined ? { globalConfigPath: opts.globalConfigPath } : {}),
+    runGitInit: gitInit,
   }
 
-  const gitignore = await ensureTmpIgnored(abs)
-  const { entry, created } = await addProject(abs, opts.globalConfigPath)
-  return { entry, created, gitInitialized, gitignore }
+  try {
+    return await addProjectWithGit(base)
+  } catch (err) {
+    if (!(err instanceof NeedGitInitError)) throw err
+
+    const isTTY = opts.isTTY ?? Boolean(process.stdin.isTTY && process.stdout.isTTY)
+    if (!opts.yes) {
+      if (!isTTY) {
+        throw new AddGitAbortedError(
+          `yorz add: target directory is not a git repository; pass --yes to auto-run git init in non-interactive mode`,
+        )
+      }
+      const ask = opts.prompt ?? defaultPrompt
+      const raw = await ask(`yorz add: ${err.path} 未 git init，是否自动执行 \`git init\`? [y/N] `)
+      const answer = raw.trim().toLowerCase()
+      if (answer !== 'y' && answer !== 'yes') {
+        throw new AddGitAbortedError(`yorz add: aborted — target directory is not a git repository`)
+      }
+    }
+    return await addProjectWithGit({ ...base, gitInit: true })
+  }
 }

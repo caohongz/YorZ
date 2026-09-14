@@ -1,10 +1,12 @@
 import { Hono } from 'hono'
-import { basename, isAbsolute, resolve } from 'node:path'
+import { basename, isAbsolute } from 'node:path'
 import { existsSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import type { ProjectRegistry } from '../project-registry.js'
 import type { WorktreeManager } from '../worktree-manager.js'
 import { GitError } from '../git.js'
+import { normalizeAbsPath } from '../path-normalize.js'
+import { NeedGitInitError } from '../project-add.js'
 
 export function createProjectRoutes(
   registry: ProjectRegistry,
@@ -24,7 +26,8 @@ export function createProjectRoutes(
     } catch {
       return c.json({ error: 'invalid JSON body' }, 400)
     }
-    const path = (body as { path?: unknown } | null)?.path
+    const raw = body as { path?: unknown; gitInit?: unknown } | null
+    const path = raw?.path
     if (typeof path !== 'string' || !path.trim()) {
       return c.json({ error: 'path required' }, 400)
     }
@@ -32,7 +35,8 @@ export function createProjectRoutes(
     if (!isAbsolute(trimmed)) {
       return c.json({ error: 'path must be absolute' }, 400)
     }
-    const normalized = resolve(trimmed)
+    // 归一化必须在入口做一次，保证 GUI 点选与手输产生同一个项目 id（见 win32 盘符大小写）。
+    const normalized = normalizeAbsPath(trimmed)
     if (!existsSync(normalized)) {
       return c.json({ error: `path does not exist: ${normalized}` }, 400)
     }
@@ -41,7 +45,7 @@ export function createProjectRoutes(
       return c.json({ error: `path is not a directory: ${normalized}` }, 400)
     }
     try {
-      const result = await registry.add(normalized)
+      const result = await registry.addWithGit(normalized, { gitInit: raw?.gitInit === true })
       return c.json(
         {
           id: result.entry.id,
@@ -52,6 +56,10 @@ export function createProjectRoutes(
         result.created ? 201 : 200,
       )
     } catch (err) {
+      // 非 git 仓库时不直接失败：交给前端二次确认后带 gitInit 重试，此刻尚未产生副作用。
+      if (err instanceof NeedGitInitError) {
+        return c.json({ error: err.message, needGitInit: true, path: err.path }, 409)
+      }
       return c.json({ error: (err as Error).message }, 400)
     }
   })

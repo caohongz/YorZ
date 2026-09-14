@@ -307,6 +307,24 @@ async function extractErrorDetail(res: Response): Promise<string> {
   }
 }
 
+export interface FsListEntry {
+  name: string
+  path: string
+}
+
+/** `GET /api/fs/list` 的响应；`sep` 是平台分隔符，前端拼路径必须用它而非硬编码 `/`。 */
+export interface FsListResult {
+  path: string
+  parent: string | null
+  sep: string
+  entries: FsListEntry[]
+  truncated: boolean
+}
+
+export type AddProjectOutcome =
+  | { ok: true; project: ProjectListItem }
+  | { ok: false; needGitInit: true; path: string }
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init)
   if (!res.ok) {
@@ -449,6 +467,41 @@ export const api = {
       `${projectBase(pid)}/specs/${encodeURIComponent(id)}/debug`,
     ),
   listProjects: () => request<ProjectListItem[]>('/api/projects'),
+  /**
+   * 列举本地目录，供添加项目时的目录选择器使用。
+   *
+   * @param path 目标目录绝对路径；`undefined` 回落到用户主目录，空串在 Windows 上表示盘符列表层。
+   * @param showHidden 是否纳入点号开头的隐藏目录。
+   */
+  listDirs: (path?: string, showHidden?: boolean) => {
+    const params = new URLSearchParams()
+    if (path !== undefined) params.set('path', path)
+    if (showHidden) params.set('showHidden', '1')
+    const qs = params.toString()
+    return request<FsListResult>(`/api/fs/list${qs ? `?${qs}` : ''}`)
+  },
+  /**
+   * 添加项目，语义与 CLI `yorz add` 对齐。
+   *
+   * 目标不是 git 仓库时后端返回 409：这里转成 `{ ok: false, needGitInit: true }`
+   * 而非抛错，由调用方弹二次确认后带 `gitInit: true` 重试。
+   */
+  addProject: async (path: string, opts?: { gitInit?: boolean }): Promise<AddProjectOutcome> => {
+    const res = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ path, ...(opts?.gitInit ? { gitInit: true } : {}) }),
+    })
+    if (res.status === 409) {
+      const body = (await res.json()) as { needGitInit?: boolean; path?: string }
+      if (body.needGitInit) return { ok: false, needGitInit: true, path: body.path ?? path }
+    }
+    if (!res.ok) {
+      const detail = await extractErrorDetail(res)
+      throw new Error(`${res.status} ${detail || res.statusText}`)
+    }
+    return { ok: true, project: (await res.json()) as ProjectListItem }
+  },
   listSystemNotifications: () => request<SystemNotification[]>('/api/system-notifications'),
   deleteSystemNotification: (id: string) =>
     request<{ ok: true }>(`/api/system-notifications/${encodeURIComponent(id)}`, {

@@ -36,9 +36,9 @@ describe('parseBuiltinCommand', () => {
       body: '继续',
     })
     // Regression: with the @ left in, specDirOf() aimed debug.md at "@.yorz/specs/x".
-    expect(specDirOf(parseBuiltinCommand('/yorz-debug @.yorz/specs/x/spec.md 崩溃')!.specPath)).toBe(
-      '.yorz/specs/x',
-    )
+    expect(
+      specDirOf(parseBuiltinCommand('/yorz-debug @.yorz/specs/x/spec.md 崩溃')!.specPath),
+    ).toBe('.yorz/specs/x')
   })
 
   it('splits a <type>: body prefix, with either colon', () => {

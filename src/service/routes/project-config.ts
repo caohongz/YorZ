@@ -129,27 +129,7 @@ function parseAgent(value: unknown): { value: AgentConfig } | { error: string } 
   if (kind === 'claude') return { value: { kind: 'claude' } }
   if (kind === 'opencode') return { value: { kind: 'opencode' } }
   if (kind === 'codex') return { value: { kind: 'codex' } }
-  if (kind === 'custom') {
-    const cmd = obj.cmd
-    if (typeof cmd !== 'string' || !cmd.trim()) {
-      return { error: 'agent.cmd required when kind=custom' }
-    }
-    if (cmd.length > 500) return { error: 'agent.cmd too long (max 500)' }
-    const argsRaw = obj.args
-    let args: string[] = []
-    if (argsRaw !== undefined) {
-      if (!Array.isArray(argsRaw)) return { error: 'agent.args must be an array of strings' }
-      args = []
-      for (const a of argsRaw) {
-        if (typeof a !== 'string') return { error: 'agent.args entries must be strings' }
-        if (a.length > 500) return { error: 'agent.args entry too long (max 500)' }
-        args.push(a)
-      }
-      if (args.length > 64) return { error: 'agent.args too many entries (max 64)' }
-    }
-    return { value: { kind: 'custom', cmd: cmd.trim(), args } }
-  }
-  return { error: 'agent.kind must be inherit | claude | opencode | codex | custom' }
+  return { error: 'agent.kind must be inherit | claude | opencode | codex' }
 }
 
 function parseSpecsDir(value: unknown): { value: string } | { error: string } {

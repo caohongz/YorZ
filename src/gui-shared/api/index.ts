@@ -136,7 +136,6 @@ export type AgentConfig =
   | { kind: 'claude' }
   | { kind: 'opencode' }
   | { kind: 'codex' }
-  | { kind: 'custom'; cmd: string; args: string[] }
 
 export interface CommandDef {
   id: string

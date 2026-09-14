@@ -170,18 +170,5 @@ function readAgentCmd(cwd: string): AgentCmd {
   const kind = (agent as { kind?: unknown }).kind
   if (kind === 'opencode') return BUILTIN.opencode
   if (kind === 'codex') return BUILTIN.codex
-  if (kind === 'custom') {
-    const cmd = (agent as { cmd?: unknown }).cmd
-    const argsRaw = (agent as { args?: unknown }).args
-    if (typeof cmd !== 'string' || !cmd.trim()) return BUILTIN.claude
-    const prefix: string[] = Array.isArray(argsRaw)
-      ? argsRaw.filter((a): a is string => typeof a === 'string')
-      : []
-    return {
-      cmd: cmd.trim(),
-      args: (prompt) => [...prefix, prompt],
-      streamFormat: 'text',
-    }
-  }
   return BUILTIN.claude
 }

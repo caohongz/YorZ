@@ -9,7 +9,6 @@ export type AgentConfig =
   | { kind: 'claude' }
   | { kind: 'opencode' }
   | { kind: 'codex' }
-  | { kind: 'custom'; cmd: string; args: string[] }
 
 export interface ProjectConfig {
   version: 1
@@ -143,14 +142,8 @@ function normalizeAgent(value: unknown): AgentConfig {
   if (kind === 'inherit') return { kind: 'inherit' }
   if (kind === 'opencode') return { kind: 'opencode' }
   if (kind === 'codex') return { kind: 'codex' }
-  if (kind === 'custom') {
-    const cmd = typeof obj.cmd === 'string' ? obj.cmd.trim() : ''
-    if (!cmd) return { kind: 'claude' }
-    const args: string[] = Array.isArray(obj.args)
-      ? obj.args.filter((a): a is string => typeof a === 'string')
-      : []
-    return { kind: 'custom', cmd, args }
-  }
+  // 已移除的 `kind: 'custom'`（含 cmd/args）走这里降级为 claude：老配置文件里
+  // 残留的这一档不再被识别，下次保存时字段会被白名单输出丢掉。
   return { kind: 'claude' }
 }
 

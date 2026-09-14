@@ -22,14 +22,12 @@ interface Props {
   onSaved?: (message: string) => void
 }
 
-type AgentKind = 'inherit' | 'claude' | 'opencode' | 'codex' | 'custom'
+type AgentKind = 'inherit' | 'claude' | 'opencode' | 'codex'
 
 const DEFAULT_SPECS_DIR = '.yorz/specs'
 
 export const ProjectConfigDialog: Component<Props> = (props) => {
   const [kind, setKind] = createSignal<AgentKind>('inherit')
-  const [customCmd, setCustomCmd] = createSignal('')
-  const [customArgs, setCustomArgs] = createSignal('')
   const [specsDir, setSpecsDir] = createSignal(DEFAULT_SPECS_DIR)
   const [initialSpecsDir, setInitialSpecsDir] = createSignal(DEFAULT_SPECS_DIR)
   const [loading, setLoading] = createSignal(false)
@@ -54,39 +52,17 @@ export const ProjectConfigDialog: Component<Props> = (props) => {
 
   function applyConfig(cfg: ProjectConfig) {
     setKind(cfg.agent.kind)
-    if (cfg.agent.kind === 'custom') {
-      setCustomCmd(cfg.agent.cmd)
-      setCustomArgs(cfg.agent.args.join(' '))
-    } else {
-      setCustomCmd('')
-      setCustomArgs('')
-    }
     const dir = cfg.specsDir || DEFAULT_SPECS_DIR
     setSpecsDir(dir)
     setInitialSpecsDir(dir)
   }
 
-  function parseArgs(raw: string): string[] {
-    return raw
-      .split(/\s+/)
-      .map((s) => s.trim())
-      .filter(Boolean)
-  }
-
-  function buildAgent(): AgentConfig | { error: string } {
-    const k = kind()
-    if (k === 'inherit') return { kind: 'inherit' }
-    if (k === 'claude') return { kind: 'claude' }
-    if (k === 'opencode') return { kind: 'opencode' }
-    if (k === 'codex') return { kind: 'codex' }
-    const cmd = customCmd().trim()
-    if (!cmd) return { error: t('projectConfig.cmdRequired') }
-    return { kind: 'custom', cmd, args: parseArgs(customArgs()) }
+  function buildAgent(): AgentConfig {
+    return { kind: kind() }
   }
 
   function agentLabel(k: AgentKind): string {
     if (k === 'inherit') return t('projectConfig.inheritGlobal')
-    if (k === 'custom') return t('projectConfig.custom')
     if (k === 'codex') return t('projectConfig.agentCodex')
     if (k === 'opencode') return t('projectConfig.agentOpencode')
     return t('projectConfig.agentClaude')
@@ -96,10 +72,6 @@ export const ProjectConfigDialog: Component<Props> = (props) => {
     e.preventDefault()
     setError(null)
     const agent = buildAgent()
-    if ('error' in agent) {
-      setError(agent.error)
-      return
-    }
     const dir = specsDir().trim() || DEFAULT_SPECS_DIR
     if (dir.split(/[\\/]/).some((seg) => seg === '..')) {
       setError(t('projectConfig.invalidPath'))
@@ -144,7 +116,7 @@ export const ProjectConfigDialog: Component<Props> = (props) => {
               <RadioGroupLabel class="mb-1.5 w-full font-medium">
                 {t('projectConfig.agent')}
               </RadioGroupLabel>
-              {(['inherit', 'claude', 'opencode', 'codex', 'custom'] as const).map((k) => (
+              {(['inherit', 'claude', 'opencode', 'codex'] as const).map((k) => (
                 <RadioGroupItem value={k} class="flex items-center gap-1.5">
                   <RadioGroupItemInput />
                   <RadioGroupItemControl />
@@ -152,29 +124,6 @@ export const ProjectConfigDialog: Component<Props> = (props) => {
                 </RadioGroupItem>
               ))}
             </RadioGroup>
-
-            <Show when={kind() === 'custom'}>
-              <label class="flex flex-col gap-1 font-medium">
-                <span>{t('projectConfig.cmd')}</span>
-                <Input
-                  type="text"
-                  value={customCmd()}
-                  onInput={(e) => setCustomCmd(e.currentTarget.value)}
-                  placeholder={t('projectConfig.cmdPlaceholder')}
-                  disabled={busy()}
-                />
-              </label>
-              <label class="flex flex-col gap-1 font-medium">
-                <span>{t('projectConfig.args')}</span>
-                <Input
-                  type="text"
-                  value={customArgs()}
-                  onInput={(e) => setCustomArgs(e.currentTarget.value)}
-                  placeholder="--flag value"
-                  disabled={busy()}
-                />
-              </label>
-            </Show>
 
             <label class="flex flex-col gap-1 font-medium">
               <span>{t('projectConfig.specsDir')}</span>

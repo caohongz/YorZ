@@ -179,11 +179,6 @@ export const zhCN = {
     agent: 'Agent',
     kind: 'Agent 类型',
     inherit: '跟随全局',
-    custom: '自定义命令',
-    cmd: '命令',
-    args: '参数',
-    argsHint: '空格分隔',
-    cmdRequired: '自定义 Agent 需要填写命令',
   },
   chat: {
     untitled: '未命名会话',

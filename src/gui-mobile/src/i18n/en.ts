@@ -176,11 +176,6 @@ export const en: Translation = {
     agent: 'Agent',
     kind: 'Agent kind',
     inherit: 'Inherit global',
-    custom: 'Custom command',
-    cmd: 'Command',
-    args: 'Arguments',
-    argsHint: 'Space separated',
-    cmdRequired: 'A custom agent needs a command',
   },
   chat: {
     untitled: 'Untitled session',

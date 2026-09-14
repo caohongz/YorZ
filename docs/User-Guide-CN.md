@@ -330,11 +330,10 @@ GUI header 最右侧有三横配置入口，点击后可以：
 
 可以配置：
 
-- `Agent`：默认选择「继承全局默认」，也可以显式选择 ClaudeCode、OpenCode、Codex 或自定义命令。
-- `命令 (cmd)` 与 `参数 (args，空格分隔)`：仅在选择「自定义」时填写。
+- `Agent`：默认选择「继承全局默认」，也可以显式选择 ClaudeCode、OpenCode、Codex。
 - `spec 文档目录`：相对项目根路径，默认是 `.yorz/specs`。
 
-保存后，该项目后续新建 spec、续跑 spec、追加任务、Chat 对话和 Review 会使用解析后的 Agent：项目选择「继承全局默认」时使用全局默认 Agent，项目选择具体 Agent 或自定义命令时优先使用项目配置。
+保存后，该项目后续新建 spec、续跑 spec、追加任务、Chat 对话和 Review 会使用解析后的 Agent：项目选择「继承全局默认」时使用全局默认 Agent，项目选择具体 Agent 时优先使用项目配置。
 
 ### 8.6 Chat 对话
 

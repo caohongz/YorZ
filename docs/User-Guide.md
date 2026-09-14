@@ -329,11 +329,10 @@ In the project list on the left side of the GUI, click the configuration entry n
 
 You can configure:
 
-- `Agent`: choose Inherit global default, ClaudeCode, OpenCode, Codex, or a custom command.
-- `Command (cmd)` and `Arguments (args, space-separated)`: fill these in only when choosing Custom.
+- `Agent`: choose Inherit global default, ClaudeCode, OpenCode, or Codex.
 - `Spec document directory`: a path relative to the project root. The default is `.yorz/specs`.
 
-After saving, new specs, spec reruns, appended tasks, Chat conversations, and Review for this project use the resolved Agent: Inherit global default uses the global default Agent, while a concrete Agent or custom command takes precedence for this project.
+After saving, new specs, spec reruns, appended tasks, Chat conversations, and Review for this project use the resolved Agent: Inherit global default uses the global default Agent, while a concrete Agent takes precedence for this project.
 
 ### 8.6 Chat
 

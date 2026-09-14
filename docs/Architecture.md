@@ -81,7 +81,7 @@ Agent 与 Service 之间**不存在长连接、不存在阻塞调用**。两者�
 | **Service** | 常驻进程（CLI 启动） | HTTP/SSE + 文件监听 + Agent Relauncher + 存储；GUI 与 md 之间的桥梁 |
 | **Skill** | md 文件（带 frontmatter） | 描述工作流步骤；引导 Agent 读写约定路径的 md，遇到交互节点优雅退出 |
 | **GUI** | Solid.js SPA（Service 内置托管） | 需求编辑、决策审阅、执行 Review；图形化表达 |
-| **Agent** | 外部进程（claude / opencode） | 按 skill 指令读写 md，**持续推进、遇阻即退**（待用户确认时退出，由 CLI 续拉），不长驻 |
+| **Agent** | 外部进程（claude / opencode / codex / pi） | 按 skill 指令读写 md，**持续推进、遇阻即退**（待用户确认时退出，由 CLI 续拉），不长驻 |
 
 ---
 

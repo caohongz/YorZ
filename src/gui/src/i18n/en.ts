@@ -363,6 +363,7 @@ export const en = {
     agentClaude: 'ClaudeCode',
     agentOpencode: 'OpenCode',
     agentCodex: 'Codex',
+    agentPi: 'Pi',
     agent: 'Agent',
     specsDir: 'Spec directory',
     specsDirHint: 'Relative to project root, auto-created if missing',

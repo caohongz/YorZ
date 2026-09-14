@@ -21,11 +21,13 @@ YorZ turns spec information into visual, structured views and provides an SDD-fo
 - One-click git worktree isolation, with concurrent Agents running on separate tasks
 - Minimal user intervention while key decisions stay under user control
 - Deep debug mode that uses evidence chains to diagnose hard problems Agents struggle to solve
-- Works with mainstream Coding Agents including Claude Code, OpenCode, and Codex
+- Works with mainstream Coding Agents including Claude Code, OpenCode, Codex, and Pi
 
 [_User Guide_](./docs/User-Guide.md)
 
 ## Installation
+
+Requires Node.js >= 22.19.0 (the floor comes from the bundled Pi Agent SDK).
 
 ```bash
 pnpm add -g @yorz/cli
@@ -45,7 +47,7 @@ yorz serve
 
 Start the YorZ Service. It runs in the background by default. Open `http://localhost:7423` in your browser to access the dashboard.
 
-On startup, `yorz serve` automatically checks the `yorz-spec` skill. If it is missing or out of date, YorZ installs or updates it for every supported Agent (Claude Code / OpenCode / Codex) and prints the result before starting the Service.
+On startup, `yorz serve` automatically checks the `yorz-spec` skill. If it is missing or out of date, YorZ installs or updates it for every supported Agent (Claude Code / OpenCode / Codex / Pi) and prints the result before starting the Service.
 
 To stop the background service:
 

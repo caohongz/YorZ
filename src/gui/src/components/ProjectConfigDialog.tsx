@@ -22,7 +22,7 @@ interface Props {
   onSaved?: (message: string) => void
 }
 
-type AgentKind = 'inherit' | 'claude' | 'opencode' | 'codex'
+type AgentKind = 'inherit' | 'claude' | 'opencode' | 'codex' | 'pi'
 
 const DEFAULT_SPECS_DIR = '.yorz/specs'
 
@@ -65,6 +65,7 @@ export const ProjectConfigDialog: Component<Props> = (props) => {
     if (k === 'inherit') return t('projectConfig.inheritGlobal')
     if (k === 'codex') return t('projectConfig.agentCodex')
     if (k === 'opencode') return t('projectConfig.agentOpencode')
+    if (k === 'pi') return t('projectConfig.agentPi')
     return t('projectConfig.agentClaude')
   }
 
@@ -116,7 +117,7 @@ export const ProjectConfigDialog: Component<Props> = (props) => {
               <RadioGroupLabel class="mb-1.5 w-full font-medium">
                 {t('projectConfig.agent')}
               </RadioGroupLabel>
-              {(['inherit', 'claude', 'opencode', 'codex'] as const).map((k) => (
+              {(['inherit', 'claude', 'opencode', 'codex', 'pi'] as const).map((k) => (
                 <RadioGroupItem value={k} class="flex items-center gap-1.5">
                   <RadioGroupItemInput />
                   <RadioGroupItemControl />

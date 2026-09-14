@@ -22,7 +22,7 @@ import { t } from '@/i18n/index.js'
  * commands / customInstructions 由各自的路由管理，不经过这里。
  */
 
-type AgentKindOption = 'inherit' | 'claude' | 'codex' | 'opencode'
+type AgentKindOption = 'inherit' | 'claude' | 'codex' | 'opencode' | 'pi'
 
 // 写成函数而不是模块级常量：t() 在模块求值时 i18n 还没 init 完，
 // 且切语言后常量不会重算，标签会卡在初始语言上。
@@ -31,6 +31,7 @@ const kindOptions = (): readonly { value: AgentKindOption; label: string }[] => 
   { value: 'claude', label: 'Claude' },
   { value: 'codex', label: 'Codex' },
   { value: 'opencode', label: 'opencode' },
+  { value: 'pi', label: 'Pi' },
 ]
 
 export const ProjectSettings: Component = () => {

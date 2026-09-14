@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
-export type AgentName = 'claude' | 'opencode' | 'codex'
+export type AgentName = 'claude' | 'opencode' | 'codex' | 'pi'
 
 export type AgentStreamFormat = 'json' | 'text'
 
@@ -36,7 +36,7 @@ export function resolveAgentByName(name: AgentName): AgentCmd {
   return BUILTIN[name]
 }
 
-export type AgentKind = 'claude' | 'codex' | 'opencode'
+export type AgentKind = 'claude' | 'codex' | 'opencode' | 'pi'
 
 /**
  * Resolve which Agent SDK adapter a project uses, from `.yorz/config.json`'s
@@ -63,11 +63,11 @@ export function resolveAgentKind(cwd: string): AgentKind {
   if (!data || typeof data !== 'object') return 'claude'
   const agent = (data as { agent?: unknown }).agent
   if (typeof agent === 'string') {
-    return agent === 'codex' || agent === 'opencode' ? agent : 'claude'
+    return agent === 'codex' || agent === 'opencode' || agent === 'pi' ? agent : 'claude'
   }
   if (!agent || typeof agent !== 'object') return 'claude'
   const kind = (agent as { kind?: unknown }).kind
-  return kind === 'codex' || kind === 'opencode' ? kind : 'claude'
+  return kind === 'codex' || kind === 'opencode' || kind === 'pi' ? kind : 'claude'
 }
 
 const BUILTIN: Record<AgentName, AgentCmd> = {
@@ -121,6 +121,14 @@ const BUILTIN: Record<AgentName, AgentCmd> = {
     ],
     streamFormat: 'text',
   },
+  pi: {
+    cmd: 'pi',
+    // Pi 的非交互入口就是 `pi -p <prompt>`，且 SDK / CLI 层没有审批门——内置工具
+    // 在 agent 决定后直接执行，等价于 claude 的 bypassPermissions，因此不需要任何
+    // 权限旁路参数。Pi 也正常遵循 spawn 传入的 cwd，无需 opencode 那样的 env 覆盖。
+    args: (prompt) => ['-p', prompt],
+    streamFormat: 'text',
+  },
 }
 
 export function resolveAgentCmd(opts: ResolveAgentCmdOptions): AgentCmd {
@@ -164,11 +172,13 @@ function readAgentCmd(cwd: string): AgentCmd {
   if (typeof agent === 'string') {
     if (agent === 'opencode') return BUILTIN.opencode
     if (agent === 'codex') return BUILTIN.codex
+    if (agent === 'pi') return BUILTIN.pi
     return BUILTIN.claude
   }
   if (!agent || typeof agent !== 'object') return BUILTIN.claude
   const kind = (agent as { kind?: unknown }).kind
   if (kind === 'opencode') return BUILTIN.opencode
   if (kind === 'codex') return BUILTIN.codex
+  if (kind === 'pi') return BUILTIN.pi
   return BUILTIN.claude
 }

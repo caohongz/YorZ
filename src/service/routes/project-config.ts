@@ -129,7 +129,8 @@ function parseAgent(value: unknown): { value: AgentConfig } | { error: string } 
   if (kind === 'claude') return { value: { kind: 'claude' } }
   if (kind === 'opencode') return { value: { kind: 'opencode' } }
   if (kind === 'codex') return { value: { kind: 'codex' } }
-  return { error: 'agent.kind must be inherit | claude | opencode | codex' }
+  if (kind === 'pi') return { value: { kind: 'pi' } }
+  return { error: 'agent.kind must be inherit | claude | opencode | codex | pi' }
 }
 
 function parseSpecsDir(value: unknown): { value: string } | { error: string } {

@@ -1,6 +1,7 @@
 import { ClaudeAdapter } from './claude-adapter.js'
 import { CodexAdapter } from './codex-adapter.js'
 import { OpenCodeAdapter } from './opencode-adapter.js'
+import { PiAdapter } from './pi-adapter.js'
 import type { AgentKind, AgentSdkAdapter } from './types.js'
 
 export function createAdapter(kind: AgentKind, cwd: string): AgentSdkAdapter {
@@ -9,6 +10,8 @@ export function createAdapter(kind: AgentKind, cwd: string): AgentSdkAdapter {
       return new CodexAdapter(cwd)
     case 'opencode':
       return new OpenCodeAdapter(cwd)
+    case 'pi':
+      return new PiAdapter(cwd)
     case 'claude':
     default:
       return new ClaudeAdapter(cwd)

@@ -37,6 +37,7 @@ const AGENT_KINDS = [
   { value: 'claude' as const, label: 'Claude' },
   { value: 'codex' as const, label: 'Codex' },
   { value: 'opencode' as const, label: 'opencode' },
+  { value: 'pi' as const, label: 'Pi' },
 ]
 
 const LANGUAGES = [

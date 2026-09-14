@@ -21,11 +21,13 @@ YorZ 将 spec 文档信息进行图形化升维，并为 SDD 工作流定制 UI�
 - 一键启用 git worktree 隔离环境，并发启动 Agent 执行任务
 - 尽量减少用户介入流程，但保留关键决策权
 - 提供深度 debug 模式，用证据链定位 Agent 难以解决的疑难问题
-- 适配 Claude Code、OpenCode、Codex 等主流 Coding Agent
+- 适配 Claude Code、OpenCode、Codex、Pi 等主流 Coding Agent
 
 [_使用指南_](./docs/User-Guide-CN.md)
 
 ## 安装
+
+需要 Node.js >= 22.19.0（该门槛来自随包引入的 Pi Agent SDK）。
 
 ```bash
 pnpm add -g @yorz/cli
@@ -45,7 +47,7 @@ yorz serve
 
 启动 YorZ Service，服务默认在后台运行。在浏览器打开 `http://localhost:7423` 即可访问仪表盘。
 
-启动时，`yorz serve` 会自动检测 `yorz-spec` skill：当缺失或非最新时，为所有支持的 Agent（Claude Code / OpenCode / Codex）自动安装或更新，并在服务启动前输出日志。
+启动时，`yorz serve` 会自动检测 `yorz-spec` skill：当缺失或非最新时，为所有支持的 Agent（Claude Code / OpenCode / Codex / Pi）自动安装或更新，并在服务启动前输出日志。
 
 若需停止后台服务：
 

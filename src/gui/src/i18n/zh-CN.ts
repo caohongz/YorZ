@@ -358,6 +358,7 @@ export const zhCN = {
     agentClaude: 'ClaudeCode',
     agentOpencode: 'OpenCode',
     agentCodex: 'Codex',
+    agentPi: 'Pi',
     agent: 'Agent',
     specsDir: 'spec 文档目录',
     specsDirHint: '相对项目根路径，不存在时会自动创建',

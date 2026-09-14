@@ -30,6 +30,8 @@ export default defineConfig({
         '@anthropic-ai/claude-agent-sdk',
         '@openai/codex-sdk',
         '@opencode-ai/sdk',
+        '@earendil-works/pi-coding-agent',
+        /^@earendil-works\//,
         'markdown-it',
         /^markdown-it\//,
         'mermaid',

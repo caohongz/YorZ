@@ -255,7 +255,13 @@ export function resolveProjectAgentKind(
   globalDefault: GlobalAgentKind,
 ): AgentKind {
   if (projectAgent.kind === 'inherit') return globalDefault
-  if (projectAgent.kind === 'codex' || projectAgent.kind === 'opencode') return projectAgent.kind
+  if (
+    projectAgent.kind === 'codex' ||
+    projectAgent.kind === 'opencode' ||
+    projectAgent.kind === 'pi'
+  ) {
+    return projectAgent.kind
+  }
   return 'claude'
 }
 

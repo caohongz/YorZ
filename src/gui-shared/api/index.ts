@@ -136,6 +136,7 @@ export type AgentConfig =
   | { kind: 'claude' }
   | { kind: 'opencode' }
   | { kind: 'codex' }
+  | { kind: 'pi' }
 
 export interface CommandDef {
   id: string
@@ -186,7 +187,7 @@ export interface ProjectConfig {
 
 export interface GlobalConfig {
   agent: {
-    defaultKind: 'claude' | 'opencode' | 'codex'
+    defaultKind: 'claude' | 'opencode' | 'codex' | 'pi'
   }
   notifications: {
     sessionEnd: {
@@ -222,7 +223,7 @@ export interface FileCompletionResult {
   items: string[]
 }
 
-export type AgentKind = 'claude' | 'codex' | 'opencode'
+export type AgentKind = 'claude' | 'codex' | 'opencode' | 'pi'
 
 export type SystemNotificationKind = 'version-update'
 export type SystemNotificationAction = 'none' | 'update-available' | 'updating' | 'restart-ready'

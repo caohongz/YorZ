@@ -182,9 +182,6 @@ export const en: Translation = {
     empty: 'No messages in this session yet',
     draftEmpty: 'Say something to start a new session',
     usageLoading: 'Checking current model usage…',
-    usageUnavailable: '{{kind}} does not support remaining usage queries yet.',
-    usageInstallHint:
-      '{{kind}} requires opencode-quota before remaining usage can be queried: {{command}}',
     usageError: 'Failed to query {{kind}} remaining usage.',
     usageAvailableNoDetails: '{{kind}} is connected, but returned no displayable usage details.',
     usageSummary: '{{kind}} usage: {{details}}',

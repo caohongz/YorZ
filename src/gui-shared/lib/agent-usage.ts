@@ -4,8 +4,8 @@ import type { AgentUsageStatus, AgentUsageWindow } from '../api/index.js'
  * Agent 剩余用量摘要的文案组装。
  *
  * 两端展示位置不同（桌面在「未选中会话」的聊天区，移动端在会话列表 / 草稿的
- * 空态），但分支完全一样：loading / 不支持 / 需安装 / 查询失败 / 无明细 /
- * 有窗口明细共 6 条。复制一份必然漂移，所以逻辑放共享层，两端只提供
+ * 空态），但分支完全一样：loading / 不支持（静默）/ 查询失败 / 无明细 /
+ * 有窗口明细。复制一份必然漂移，所以逻辑放共享层，两端只提供
  * 翻译函数与时间格式化。
  *
  * 文案键沿用桌面端既有的 `chat.usage*` 命名，移动端词典按同名补齐。
@@ -52,10 +52,10 @@ export function formatAgentUsageSummary(
   if (loading) return deps.t('chat.usageLoading')
   if (!usage) return ''
   if (usage.status === 'error') return deps.t('chat.usageError', { kind: usage.kind })
-  if (usage.status === 'unavailable' && usage.installCommand) {
-    return deps.t('chat.usageInstallHint', { kind: usage.kind, command: usage.installCommand })
-  }
-  if (usage.status === 'unavailable') return deps.t('chat.usageUnavailable', { kind: usage.kind })
+  // 不支持查询（如 opencode）就什么都不说：这条信息对用户没有可操作性，
+  // 只会在空态里占一行噪音；曾经的「去装 opencode-quota 插件」引导更糟——
+  // 装完依然拿不到可用数据。
+  if (usage.status === 'unavailable') return ''
   const windows = usage.windows ?? []
   if (windows.length === 0) return deps.t('chat.usageAvailableNoDetails', { kind: usage.kind })
   return deps.t('chat.usageSummary', {

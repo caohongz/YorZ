@@ -266,7 +266,6 @@ export interface AgentUsageStatus {
   subscriptionType?: string | null
   rateLimitsAvailable?: boolean
   windows?: AgentUsageWindow[]
-  installCommand?: string
   message?: string
 }
 

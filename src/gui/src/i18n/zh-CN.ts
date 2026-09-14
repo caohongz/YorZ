@@ -87,8 +87,6 @@ export const zhCN = {
     /** Untitled（草稿）态：服务端尚未创建 session。 */
     draftEmpty: 'Untitled 会话 —— 发送消息即开始。',
     usageLoading: '正在查询当前模型剩余用量…',
-    usageUnavailable: '{{kind}} 暂不支持查询剩余用量。',
-    usageInstallHint: '{{kind}} 需要安装 opencode-quota 后才能查询剩余用量：{{command}}',
     usageError: '{{kind}} 剩余用量查询失败。',
     usageAvailableNoDetails: '{{kind}} 已连接，但未返回可展示的剩余用量明细。',
     usageSummary: '{{kind}} 用量：{{details}}',

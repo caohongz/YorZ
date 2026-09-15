@@ -1,29 +1,35 @@
-# YorZ
+<div align="center">
 
-**English** | [中文](./README_CN.md)
+# YorZ · Step Into the New Era of AI Coding
+
+### Coding Made Simple and Comfortable
+
+_A minimal, zero-barrier interaction design with mobile-first best practices — you can even "write" code lying down_
+
+### Unleash Your Agents
+
+_Let Claude / Codex run 10 tasks at once, with zero interference_
+
+### A Picture Is Worth a Thousand Words
+
+_Decide from diagrams, and free developers from wading through docs and code_
 
 ---
 
-## Why YorZ
+**English** · [中文](./README_CN.md) · [📖 User Guide](./docs/User-Guide.md)
 
-YorZ (Youzi) keeps vibe coding from turning your codebase into a black box.  
-It also addresses a common failure mode in SDD (spec-driven development): developers stop reading the specs.
-
-Agents can generate documents so quickly that developers get overloaded and pushed out of the workflow.  
-YorZ turns spec information into visual, structured views and provides an SDD-focused UI, so Agents can work at full speed without burying developers in text.
+</div>
 
 ![preview](./docs/preview.png)
 
-## Features
+## What Makes YorZ (Youzi) Different
 
-- A built-in lightweight SDD skill with a UI tailored to SDD workflows
-- Visual diagrams that make Agent output easier to read and understand
-- One-click git worktree isolation, with concurrent Agents running on separate tasks
-- Minimal user intervention while key decisions stay under user control
-- Deep debug mode that uses evidence chains to diagnose hard problems Agents struggle to solve
-- Works with mainstream Coding Agents including Claude Code, OpenCode, Codex, and Pi
-
-[_User Guide_](./docs/User-Guide.md)
+- Minimal interaction design with a zero-barrier learning curve — friendly to coding beginners
+- Mobile-first best practices — you can even "write" code lying down
+- Built-in spec-driven development workflow that tames large projects and complex requirements
+- Concurrent tasks that run in isolation, squeezing every drop out of your Agents
+- Rich technical diagrams that elevate docs and code into insight for faster understanding and sharper decisions
+- Compatible with mainstream Agents, with seamless multi-Agent switching
 
 ## Installation
 
@@ -45,40 +51,13 @@ npm install -g @yorz/cli
 yorz serve
 ```
 
-Start the YorZ Service. It runs in the background by default. Open `http://localhost:7423` in your browser to access the dashboard.
-
-On startup, `yorz serve` automatically checks the `yorz-spec` skill. If it is missing or out of date, YorZ installs or updates it for every supported Agent (Claude Code / OpenCode / Codex / Pi) and prints the result before starting the Service.
+This starts the YorZ Service, which runs in the background by default. Open `http://localhost:7423` in your browser to access the dashboard.
 
 To stop the background service:
 
 ```bash
 yorz serve stop
 ```
-
-### Add a Project
-
-```bash
-yorz add /path/to/your/project
-```
-
-Initialize the directory as a YorZ project by creating `.yorz/` config, registering it with the Service, and adding `.yorz/tmp` to `.gitignore`.
-
-The `yorz-spec` skill teaches your AI Agent how to drive spec documents through the plan / tasks / execute / done stages. It is installed and kept up to date automatically by `yorz serve` as described above, so no manual installation is required.
-
-## Command Reference
-
-| Command           | Description                                                            |
-| ----------------- | ---------------------------------------------------------------------- |
-| `yorz serve`      | Start or reuse the background YorZ Service with multi-project support. |
-| `yorz serve stop` | Stop the background YorZ Service.                                      |
-| `yorz add <path>` | Initialize and register a directory as a YorZ project.                 |
-
-### Global Options
-
-| Option          | Description                   |
-| --------------- | ----------------------------- |
-| `-V, --version` | Print the YorZ version.       |
-| `-h, --help`    | Display help for any command. |
 
 ## Development
 

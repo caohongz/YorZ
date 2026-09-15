@@ -389,7 +389,7 @@ export const zhCN = {
   globalConfig: {
     title: '全局配置',
     agentDefault: '默认 Agent',
-    sessionEnd: '会话结束提示',
+    sessionEnd: '任务结束提示',
     banner: '横幅提示',
     sound: '声音提示',
     powerTitle: '任务运行期间防休眠',

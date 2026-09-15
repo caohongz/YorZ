@@ -395,7 +395,7 @@ export const en = {
   globalConfig: {
     title: 'Global Settings',
     agentDefault: 'Default Agent',
-    sessionEnd: 'Session end alerts',
+    sessionEnd: 'Task end alerts',
     banner: 'Banner alert',
     sound: 'Sound alert',
     powerTitle: 'Prevent sleep while tasks run',

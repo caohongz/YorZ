@@ -52,7 +52,13 @@ describe('renderMermaidIn', () => {
     installDom()
     mermaidMock.initialize.mockClear()
     mermaidMock.run.mockReset()
-    mermaidMock.run.mockResolvedValue(undefined)
+    // 默认实现要真的"出图"：渲染核心会在每轮画完后校验 svg 是否存在，不出图就重试。
+    mermaidMock.run.mockImplementation(async ({ nodes }) => {
+      nodes.forEach((node) => {
+        node.setAttribute('data-processed', 'true')
+        node.innerHTML = '<svg viewBox="0 0 100 80"></svg>'
+      })
+    })
   })
 
   afterEach(() => {
@@ -75,9 +81,72 @@ describe('renderMermaidIn', () => {
     expect(mermaidMock.run.mock.calls[0]![0].nodes).toHaveLength(1)
   })
 
-  it('跳过已经脱离 DOM 的 mermaid 节点', async () => {
+  it('容器始终未挂载时耗尽就绪预算才放弃，并留下可诊断的 warn', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const article = document.createElement('article')
     article.appendChild(mermaidNode())
+    const { renderMermaidIn } = await import('../mermaid.js')
+
+    await renderMermaidIn(article)
+
+    expect(mermaidMock.run).not.toHaveBeenCalled()
+    expect(warnSpy).toHaveBeenCalled()
+    expect(warnSpy.mock.calls.some(([msg]) => String(msg).includes('[mermaid]'))).toBe(true)
+    warnSpy.mockRestore()
+  })
+
+  it('容器延迟挂载时按帧等待，挂载后仍能完成渲染', async () => {
+    mermaidMock.run.mockImplementation(async ({ nodes }) => {
+      nodes.forEach((node) => {
+        node.innerHTML = '<svg viewBox="0 0 100 80"></svg>'
+      })
+    })
+    const article = document.createElement('article')
+    article.appendChild(mermaidNode())
+    const { renderMermaidIn } = await import('../mermaid.js')
+
+    // 渲染已经开始，但 article 此刻还没进文档——模拟客户端路由下 Solid 先交出 ref
+    const rendering = renderMermaidIn(article)
+    await new Promise((resolve) => dom.window.setTimeout(resolve, 10))
+    document.body.appendChild(article)
+
+    await rendering
+
+    expect(mermaidMock.run).toHaveBeenCalledTimes(1)
+    expect(article.querySelector('.mermaid svg')).not.toBeNull()
+  })
+
+  it('首轮画漏时自动重试直到出图', async () => {
+    let calls = 0
+    mermaidMock.run.mockImplementation(async ({ nodes }) => {
+      calls += 1
+      if (calls === 1) {
+        // mermaid 会在渲染前就打上 data-processed，打了不等于画成了
+        nodes.forEach((node) => node.setAttribute('data-processed', 'true'))
+        return
+      }
+      nodes.forEach((node) => {
+        node.innerHTML = '<svg viewBox="0 0 100 80"></svg>'
+      })
+    })
+    const article = document.createElement('article')
+    article.appendChild(mermaidNode())
+    document.body.appendChild(article)
+    const { renderMermaidIn } = await import('../mermaid.js')
+
+    await renderMermaidIn(article)
+
+    expect(mermaidMock.run).toHaveBeenCalledTimes(2)
+    expect(article.querySelector('.mermaid svg')).not.toBeNull()
+  })
+
+  it('图已全部出图时不再重绘（保持增量语义）', async () => {
+    const article = document.createElement('article')
+    const node = mermaidNode()
+    node.setAttribute('data-processed', 'true')
+    node.innerHTML = '<svg viewBox="0 0 100 80"></svg>'
+    article.appendChild(node)
+    document.body.appendChild(article)
     const { renderMermaidIn } = await import('../mermaid.js')
 
     await renderMermaidIn(article)

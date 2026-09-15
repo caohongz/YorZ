@@ -22,7 +22,9 @@ _Decide from diagrams, and free developers from wading through docs and code_
 
 ![preview](./docs/preview.png)
 
-## What Makes YorZ (Youzi) Different
+https://github.com/user-attachments/assets/d82f6a5c-07e9-403c-b2b5-4b60e3c5db94
+
+## What Makes YorZ (柚子) Different
 
 - Minimal interaction design with a zero-barrier learning curve — friendly to coding beginners
 - Mobile-first best practices — you can even "write" code lying down

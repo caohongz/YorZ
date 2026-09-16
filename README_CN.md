@@ -22,6 +22,8 @@ _看图做决策，让开发者从文档、代码中解放出来_
 
 ![preview](./docs/preview.png)
 
+https://github.com/user-attachments/assets/d82f6a5c-07e9-403c-b2b5-4b60e3c5db94
+
 ## YorZ (柚子) 特性
 
 - 极简交互设计，零门槛上手，编程新手友好

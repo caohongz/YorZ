@@ -207,7 +207,17 @@ export const ChatComposer: Component<{
             aria-label={t('chat.abort')}
             onClick={() => props.onAbort()}
           >
-            <Square size={20} aria-hidden="true" />
+            {/*
+              任务运行时整页静止，方形停止图标存在感弱。套一圈旋转的 loading 圆环
+              明确「有任务在跑」：底圈淡、顶端实，animate-spin 让实端转起来。
+              ::after 命中区扩到 -0.75rem，圆环取 -0.375rem（-inset-1.5）仍在其内，
+              不改变可点范围。
+            */}
+            <span
+              class="pointer-events-none absolute -inset-1.5 animate-spin rounded-full border-2 border-destructive/25 border-t-destructive"
+              aria-hidden="true"
+            />
+            <Square size={16} aria-hidden="true" />
           </button>
         </Show>
       </div>

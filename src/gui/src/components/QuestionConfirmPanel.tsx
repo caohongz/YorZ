@@ -35,14 +35,29 @@ interface Props {
 }
 
 export const QuestionConfirmPanel: Component<Props> = (props) => {
-  const [answers, setAnswers] = createSignal<Record<string, AnswerDraft>>(
-    initialAnswers(props.questions),
-  )
+  // `props.questions` changes IN PLACE while the panel stays mounted — the spec
+  // streams in over SSE and re-parses on each update. Seeding the drafts only
+  // once (the previous `createSignal(initialAnswers(...))`) left every freshly
+  // parsed question — whose id derives from its still-changing text — without a
+  // matching draft, so its default recommended option rendered unselected until
+  // a full reload rebuilt the panel against the final questions. Instead compute
+  // defaults REACTIVELY and layer sticky per-question user overrides on top,
+  // keyed by question id, so new questions always inherit their default while
+  // edits the user already made are preserved.
+  const defaults = createMemo(() => initialAnswers(props.questions))
+  const [overrides, setOverrides] = createSignal<Record<string, AnswerDraft>>({})
+  const answers = createMemo<Record<string, AnswerDraft>>(() => ({
+    ...defaults(),
+    ...overrides(),
+  }))
   const [busy, setBusy] = createSignal(false)
   const [error, setError] = createSignal<string | null>(null)
 
   function patch(qid: string, next: Partial<AnswerDraft>) {
-    setAnswers((prev) => ({ ...prev, [qid]: { ...prev[qid], ...next } }))
+    setOverrides((prev) => ({
+      ...prev,
+      [qid]: { ...(prev[qid] ?? answers()[qid]), ...next },
+    }))
   }
   function setChoice(qid: string, label: string) {
     patch(qid, { selectedOptionLabel: label })

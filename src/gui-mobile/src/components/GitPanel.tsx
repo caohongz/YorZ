@@ -9,7 +9,7 @@ import {
   type Component,
 } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
-import { Check, GitBranch, MoreHorizontal } from 'lucide-solid'
+import { Check, GitBranch, MoreHorizontal, X } from 'lucide-solid'
 import { api, type GitChange, type GitOpsAction } from '@shared/api/index.js'
 import { subscribeProjectChanges, subscribeSession } from '@shared/api/sse.js'
 import { diffRevision, reconcileSelection, statusTone } from '@shared/lib/git-changes.js'
@@ -608,6 +608,16 @@ export const GitPanel: Component<GitPanelProps> = (props) => {
                     <Show when={diff()?.truncated}>
                       <span class="shrink-0 text-xs text-warning">{t('git.diffTruncated')}</span>
                     </Show>
+                    {/* 关闭预览：与再点同一行取消选中同口径，都是把 activePath 落回 null，
+                        让列表复原到全高。图标按钮显式给命中区，别让指尖找不到。 */}
+                    <button
+                      type="button"
+                      class="tap-target -mr-1 flex shrink-0 items-center justify-center text-muted-foreground active:opacity-60"
+                      aria-label={t('common.close')}
+                      onClick={() => setActivePath(null)}
+                    >
+                      <X size={16} aria-hidden="true" />
+                    </button>
                   </div>
                   <DiffBody
                     path={path()}

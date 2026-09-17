@@ -84,4 +84,4 @@ pnpm test
 
 _欢迎加入交流群：QQ 群 `224778869`_
 
-<img src="./qq-group.png" width="200px"> <img src="./wechat-group.png" width="200px">
+<img src="./docs/qq-group.png" width="200px"> <img src="./docs/wechat-group.png" width="200px">

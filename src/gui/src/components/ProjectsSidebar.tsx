@@ -11,12 +11,13 @@ import {
   type Component,
 } from 'solid-js'
 import { A, useLocation, useNavigate } from '@solidjs/router'
-import { ChevronsRight, ChevronsLeft, Pencil, X, HelpCircle } from 'lucide-solid'
+import { ChevronsRight, ChevronsLeft, Pencil, X, Plus } from 'lucide-solid'
 import { api } from '../lib/api.js'
 import { focusMode, exitFocusMode } from '../lib/layout-focus.js'
-import type { ProjectListItem } from '../lib/project.js'
+import { projectHref, type ProjectListItem } from '../lib/project.js'
 import { projectConfigRequestTick } from '../lib/shortcut-actions.js'
 import { ProjectConfigDialog } from './ProjectConfigDialog.js'
+import { AddProjectDialog } from './AddProjectDialog.js'
 import { Button } from './ui/button.jsx'
 import {
   Dialog,
@@ -101,6 +102,7 @@ export const ProjectsSidebar: Component = () => {
   const [deleting, setDeleting] = createSignal<ProjectListItem | null>(null)
   const [deleteFiles, setDeleteFiles] = createSignal(false)
   const [deleteBusy, setDeleteBusy] = createSignal(false)
+  const [addOpen, setAddOpen] = createSignal(false)
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -418,20 +420,26 @@ export const ProjectsSidebar: Component = () => {
           <Show
             when={!railCollapsed()}
             fallback={
-              <span
-                class="flex h-5 w-5 items-center justify-center rounded bg-muted text-muted-foreground"
-                title={`${t('sidebar.addHint')}${t('sidebar.addCmd')}`}
+              <button
+                type="button"
+                class="flex h-5 w-5 items-center justify-center rounded bg-muted text-muted-foreground hover:text-foreground"
+                title={t('addProject.trigger')}
+                aria-label={t('addProject.trigger')}
+                onClick={() => setAddOpen(true)}
               >
-                <HelpCircle class="h-3.5 w-3.5" />
-              </span>
+                <Plus class="h-3.5 w-3.5" />
+              </button>
             }
           >
-            <p class="m-0 text-sm leading-relaxed text-muted-foreground break-words">
-              {t('sidebar.addHint')}
-              <code class="mt-0.5 inline-block rounded bg-muted px-1 py-0.5 font-mono text-[0.85em] break-all">
-                {t('sidebar.addCmd')}
-              </code>
-            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              class="w-full justify-start gap-1"
+              onClick={() => setAddOpen(true)}
+            >
+              <Plus class="h-3.5 w-3.5" />
+              {t('addProject.trigger')}
+            </Button>
           </Show>
           {error() && (
             <p class="mt-1 text-sm text-destructive break-words" title={error()!}>
@@ -451,6 +459,13 @@ export const ProjectsSidebar: Component = () => {
           />
         </Show>
       </div>
+
+      {/* 列表本身由 SSE `projects-changed` 自动 refetch，这里只负责跳到新项目。 */}
+      <AddProjectDialog
+        open={addOpen()}
+        onOpenChange={setAddOpen}
+        onAdded={(projectId) => navigate(projectHref('', projectId))}
+      />
 
       <Show when={editing()}>
         {(p) => (

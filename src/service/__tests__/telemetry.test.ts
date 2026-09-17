@@ -97,6 +97,35 @@ describe('usage normalization', () => {
     })
   })
 
+  it('maps the pi flat shape, ignoring the cacheWrite1h subset', () => {
+    expect(
+      normalizeUsage('pi', {
+        input: 10,
+        output: 5,
+        cacheRead: 100,
+        cacheWrite: 20,
+        // Subset of cacheWrite — counting it again would bill those tokens twice.
+        cacheWrite1h: 8,
+        reasoning: 2,
+        totalTokens: 135,
+        cost: { input: 0.01, output: 0.02, cacheRead: 0.001, cacheWrite: 0.003, total: 0.034 },
+      }),
+    ).toEqual({
+      inputTokens: 10,
+      outputTokens: 5,
+      cacheReadTokens: 100,
+      cacheCreateTokens: 20,
+      reasoningTokens: 2,
+      costUsd: 0.034,
+    })
+  })
+
+  it('does not fall back to the claude snake_case parser for pi', () => {
+    // Before `fromPi` existed, an unmatched kind silently parsed as claude and
+    // produced an all-undefined snapshot rather than an honest failure.
+    expect(normalizeUsage('pi', { input_tokens: 3, output_tokens: 4 })).toBeUndefined()
+  })
+
   it('maps the opencode nested cache shape', () => {
     expect(
       normalizeUsage('opencode', {
@@ -147,9 +176,7 @@ describe('recorder', () => {
     const t = getTelemetry(projectRoot, env())
     t.record('cmd.exec', { status: 'exited' })
     await t.flush()
-    const index = JSON.parse(
-      readFileSync(resolveProjectsIndexFile(env()), 'utf8'),
-    ) as ProjectsIndex
+    const index = JSON.parse(readFileSync(resolveProjectsIndexFile(env()), 'utf8')) as ProjectsIndex
     const entry = index[generateProjectId(projectRoot)]
     expect(entry?.path).toBe(projectRoot)
     expect(typeof entry?.firstSeenAt).toBe('number')

@@ -238,6 +238,9 @@ describe('POST /api/specs with draftId', () => {
     const { storedName } = (await up.json()) as { storedName: string }
 
     const targetCwd = await mkdtemp(join(tmpdir(), 'yorz-spec-drafts-target-'))
+    // POST /api/projects 现与 CLI `yorz add` 对齐：非 git 目录会返回 409 needGitInit。
+    // 这里只关心 draft 结转，预置 .git 让它走「已是 git 仓库」这条直通路径。
+    await mkdir(join(targetCwd, '.git'), { recursive: true })
     const added = await fetch(`${url}api/projects`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

@@ -11,4 +11,6 @@ const REPO_ROOT = resolve(__dirname, '..', '..', '..', '..', '..')
 export default async function globalTeardown(): Promise<void> {
   rmSync(resolve(REPO_ROOT, '.tmp-e2e'), { recursive: true, force: true })
   rmSync(resolve(REPO_ROOT, '.tmp-e2e-home'), { recursive: true, force: true })
+  // Isolated HOME serving as the directory picker's default landing point.
+  rmSync(resolve(REPO_ROOT, '.tmp-e2e-fs-home'), { recursive: true, force: true })
 }

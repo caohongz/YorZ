@@ -17,7 +17,9 @@ export function normalizeUsage(kind: AgentKind, raw: unknown): UsageSnapshot | u
       ? fromCodex(obj)
       : kind === 'opencode'
         ? fromOpenCode(obj)
-        : fromClaude(obj)
+        : kind === 'pi'
+          ? fromPi(obj)
+          : fromClaude(obj)
   return isEmpty(snapshot) ? undefined : snapshot
 }
 
@@ -37,8 +39,7 @@ function fromCodex(u: Record<string, unknown>): UsageSnapshot {
   const cached = num(u.cached_input_tokens)
   // Codex reports total input including the cached part; split it so the
   // `inputTokens` field keeps its "full-price only" meaning across agents.
-  const uncached =
-    total !== undefined && cached !== undefined ? Math.max(total - cached, 0) : total
+  const uncached = total !== undefined && cached !== undefined ? Math.max(total - cached, 0) : total
   return compact({
     inputTokens: uncached,
     cacheReadTokens: cached,
@@ -56,6 +57,25 @@ function fromOpenCode(u: Record<string, unknown>): UsageSnapshot {
     reasoningTokens: num(u.reasoning),
     cacheReadTokens: num(cache.read),
     cacheCreateTokens: num(cache.write),
+  })
+}
+
+/**
+ * Pi `Usage` (camelCase, flat, with its own cost breakdown).
+ *
+ * `cacheWrite1h` is deliberately ignored: it is a *subset* of `cacheWrite`, so
+ * adding it would bill those tokens twice. `reasoning` is a subset of `output`
+ * and is reported alongside it, matching `fromOpenCode`'s existing semantics.
+ */
+function fromPi(u: Record<string, unknown>): UsageSnapshot {
+  const cost = u.cost && typeof u.cost === 'object' ? (u.cost as Record<string, unknown>) : {}
+  return compact({
+    inputTokens: num(u.input),
+    outputTokens: num(u.output),
+    cacheReadTokens: num(u.cacheRead),
+    cacheCreateTokens: num(u.cacheWrite),
+    reasoningTokens: num(u.reasoning),
+    costUsd: num(cost.total),
   })
 }
 

@@ -62,6 +62,24 @@ describe('resolveAgentCmd', () => {
     expect(result.streamFormat).toBe('text')
   })
 
+  it('picks pi when config sets agent=pi', async () => {
+    const cwd = await tempCwd()
+    await writeConfig(cwd, 'pi')
+    const result = resolveAgentCmd({ cwd, env: {} })
+    expect(result.cmd).toBe('pi')
+    // Pi has no approval gate to bypass and honors the spawned cwd.
+    expect(result.args('x')).toEqual(['-p', 'x'])
+    expect(result.streamFormat).toBe('text')
+    expect(result.env).toBeUndefined()
+  })
+
+  it('picks pi from the object schema too', async () => {
+    const cwd = await tempCwd()
+    await writeConfig(cwd, { kind: 'pi' })
+    const result = resolveAgentCmd({ cwd, env: {} })
+    expect(result.cmd).toBe('pi')
+  })
+
   it('falls back to claude when config has an unknown agent value', async () => {
     const cwd = await tempCwd()
     await writeConfig(cwd, 'gemini')

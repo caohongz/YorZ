@@ -1,31 +1,41 @@
-# YorZ
+<div align="center">
 
-[English](./README.md) | **中文**
+# YorZ · 跨进 AI Coding 新时代
+
+### Coding，如此简单、舒适
+
+_极简、零门槛交互设计，移动端最佳实践，甚至能躺着“写”代码_
+
+### 释放 Agent 潜力
+
+_让 Claude / Codex 同时执行 10 个任务，互不干扰_
+
+### 一图胜千言
+
+_看图做决策，让开发者从文档、代码中解放出来_
 
 ---
 
-## 为什么需要 YorZ
+[English](./README.md) · **中文** · [📖 使用指南](./docs/User-Guide-CN.md)
 
-YorZ（柚子）避免 vibe coding 将程序编成黑盒；  
-YorZ 解决 SDD （spec 驱动开发）工作流中，开发者不看 spec 的问题。
-
-Agent 输出文档的速度也会导致开发者信息过载，从而将开发者排挤出工作流；  
-YorZ 将 spec 文档信息进行图形化升维，并为 SDD 工作流定制 UI，解决开发者信息过载，最大化 Agent 输出功率。
+</div>
 
 ![preview](./docs/preview.png)
 
-## 功能
+https://github.com/user-attachments/assets/d82f6a5c-07e9-403c-b2b5-4b60e3c5db94
 
-- 内置轻量级 SDD skill，为 SDD 工作流定制 UI
-- 用可视化图形对 Agent 输出信息进行升维，提升阅读理解效率
-- 一键启用 git worktree 隔离环境，并发启动 Agent 执行任务
-- 尽量减少用户介入流程，但保留关键决策权
-- 提供深度 debug 模式，用证据链定位 Agent 难以解决的疑难问题
-- 适配 Claude Code、OpenCode、Codex 等主流 Coding Agent
+## YorZ (柚子) 特性
 
-[_使用指南_](./docs/User-Guide-CN.md)
+- 极简交互设计，零门槛上手，编程新手友好
+- 移动端最佳实践，甚至能躺着“写”代码
+- 内置 Spec 驱动开发工作流，轻松搞定大型项目、复杂需求
+- 并发执行任务，互不干扰，极致压榨 Agent
+- 用丰富的技术图表对文档与代码信息进行升维，快速理解、高效决策
+- 兼容主流 Agent，支持多 Agent 无缝切换
 
 ## 安装
+
+需要 Node.js >= 22.19.0（该门槛来自随包引入的 Pi Agent SDK）。
 
 ```bash
 pnpm add -g @yorz/cli
@@ -45,38 +55,11 @@ yorz serve
 
 启动 YorZ Service，服务默认在后台运行。在浏览器打开 `http://localhost:7423` 即可访问仪表盘。
 
-启动时，`yorz serve` 会自动检测 `yorz-spec` skill：当缺失或非最新时，为所有支持的 Agent（Claude Code / OpenCode / Codex）自动安装或更新，并在服务启动前输出日志。
-
 若需停止后台服务：
 
 ```bash
 yorz serve stop
 ```
-
-### 添加项目
-
-```bash
-yorz add /path/to/your/project
-```
-
-将目录初始化为 YorZ 项目（创建 `.yorz/` 配置），注册到 Service，并将 `.yorz/tmp` 加入 `.gitignore`。
-
-`yorz-spec` skill 教会你的 AI Agent 如何按 plan / tasks / execute / done 阶段驱动 spec 文档；它由 `yorz serve` 自动安装并保持最新（见第一步），无需手动安装。
-
-## 命令参考
-
-| 命令              | 说明                                          |
-| ----------------- | --------------------------------------------- |
-| `yorz serve`      | 后台启动或复用 YorZ Service，支持多项目管理。 |
-| `yorz serve stop` | 停止后台 YorZ Service。                       |
-| `yorz add <path>` | 初始化并注册一个目录为 YorZ 项目。            |
-
-### 全局选项
-
-| 选项            | 说明                     |
-| --------------- | ------------------------ |
-| `-V, --version` | 输出 YorZ 版本号。       |
-| `-h, --help`    | 显示任意命令的帮助信息。 |
 
 ## 开发
 
@@ -96,3 +79,9 @@ pnpm dev:gui
 # 运行测试
 pnpm test
 ```
+
+## 交流群
+
+_欢迎加入交流群：QQ 群 `224778869`_
+
+<img src="./docs/qq-group.png" width="200px"> <img src="./docs/wechat-group.png" width="200px">

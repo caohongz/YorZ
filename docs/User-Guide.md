@@ -100,7 +100,7 @@ First make sure YorZ Service is running. The default port is `7423`:
 yorz serve
 ```
 
-Then install Tailscale on both your PC and your phone, enable HTTPS, and confirm that both devices are signed in to the same tailnet.
+Then install [Tailscale](https://github.com/tailscale/tailscale) on both your PC and your phone, enable HTTPS, and confirm that both devices are signed in to the same tailnet.
 
 On the PC, run:
 
@@ -116,11 +116,7 @@ https://<your Tailscale-generated domain>/
 |-- proxy http://127.0.0.1:7423
 ```
 
-Open the HTTPS domain from your phone browser. YorZ detects mobile browsers and automatically switches to the mobile PWA:
-
-```text
-https://fenghenmacbook-pro.taildce4ce.ts.net/
-```
+Open the HTTPS domain from your phone browser, YorZ detects mobile browsers and automatically switches to the mobile PWA.
 
 Installing YorZ to your phone home screen is optional. Before doing that, confirm in system settings that your browser has permission to create home screen shortcuts, then open the browser settings menu and choose "Install and create shortcut".
 
@@ -297,7 +293,7 @@ Click "Global Settings" in the header menu to open the dialog. The dialog has **
 
 Global Settings has four groups:
 
-- `Default Agent`: choose ClaudeCode, OpenCode, or Codex. Projects without a project-level override inherit this value. The initial value is ClaudeCode.
+- `Default Agent`: choose ClaudeCode, OpenCode, Codex, or Pi. Projects without a project-level override inherit this value. The initial value is ClaudeCode. Pi is BYO-provider: run `pi` once and sign in first, otherwise the first turn fails with an auth error in the chat stream.
 - `Session end alerts`: independently enable Banner alert and Sound alert. Both are disabled by default. When enabled, YorZ Service triggers system notifications or sound as a best-effort action after an Agent turn ends; unsupported environments do not affect the session completion flow.
 - `Prevent sleep while tasks run`: three options, defaulting to "System default". "Prevent display sleep" keeps the screen on while an Agent session is running; "Prevent sleep" additionally keeps the system awake. It only takes effect while at least one session is running and is released as soon as all sessions finish. macOS, Linux, and Windows are supported; if the current system lacks the capability, YorZ falls back to "System default" without affecting task execution.
 - `Shortcuts`: see [8.4](#84-keyboard-shortcuts).
@@ -329,11 +325,10 @@ In the project list on the left side of the GUI, click the configuration entry n
 
 You can configure:
 
-- `Agent`: choose Inherit global default, ClaudeCode, OpenCode, Codex, or a custom command.
-- `Command (cmd)` and `Arguments (args, space-separated)`: fill these in only when choosing Custom.
+- `Agent`: choose Inherit global default, ClaudeCode, OpenCode, Codex, or Pi.
 - `Spec document directory`: a path relative to the project root. The default is `.yorz/specs`.
 
-After saving, new specs, spec reruns, appended tasks, Chat conversations, and Review for this project use the resolved Agent: Inherit global default uses the global default Agent, while a concrete Agent or custom command takes precedence for this project.
+After saving, new specs, spec reruns, appended tasks, Chat conversations, and Review for this project use the resolved Agent: Inherit global default uses the global default Agent, while a concrete Agent takes precedence for this project.
 
 ### 8.6 Chat
 
@@ -344,7 +339,7 @@ The Chat panel is an always-present conversation area, well suited to small task
 - The heading shows "Sessions (N)", where N is the number of currently running sessions. Click the heading or the arrow to collapse the list.
 - The `3 rows / 5 rows / 10 rows` control adjusts the visible height; the rest scrolls inside.
 - Each row shows the Agent kind, the session title, and a relative timestamp (for example "5m ago"); hover to see the exact time. Running sessions show a spinner, and sessions with new activity move to the top automatically.
-- Click any row to switch to that session. The list merges YorZ's own session index with the native session lists of the Agent CLIs, so sessions you started outside YorZ with claude / codex / opencode also appear here and can be continued.
+- Click any row to switch to that session. The list merges YorZ's own session index with the native session lists of the Agent CLIs, so sessions you started outside YorZ with claude / codex / opencode / pi also appear here and can be continued.
 - **Every dispatch of a spec (run, append task, git operation) starts its own session, but they collapse into a single row**: the `×N` after the title is how many rounds the spec has run, and the row shows a spinner while any of them is running. Each round therefore starts from a clean context — spec state lives entirely in the md, never in session memory — which saves tokens and keeps one spec from flooding the list.
 - To keep two Agents from rewriting the same `spec.md`, **only one round per spec runs at a time**: running a spec that already has a session in flight is refused with a notice. An append submitted at that moment is still written to the document, it just is not dispatched — run it once the current round finishes.
 
@@ -364,7 +359,7 @@ The Chat panel is an always-present conversation area, well suited to small task
 - Reloading the page restores the history from the Agent transcript, rendered identically to what you saw live.
 - Selecting a spec row stitches the history of all its rounds in chronological order, separated by a rule labelled `agent kind · time`.
 
-**Remaining usage**: while Chat is in the empty draft state, a line below the placeholder shows the remaining model quota for the current Agent, for example "claude usage: 5-hour about 62% remaining (38% used, resets: …)". The line disappears once you select an existing session. Support varies by Agent: ClaudeCode and Codex can be queried directly, while OpenCode requires the `opencode-quota` plugin — the UI prints the install command for you. A failed query degrades to a short notice and never blocks sending messages.
+**Remaining usage**: while Chat is in the empty draft state, a line below the placeholder shows the remaining model quota for the current Agent, for example "claude usage: 5-hour about 62% remaining (38% used, resets: …)". The line disappears once you select an existing session. Support varies by Agent: ClaudeCode and Codex can be queried directly, while OpenCode requires the `opencode-quota` plugin — the UI prints the install command for you. Pi is BYO-provider and reports no quota window at all, so the line is simply omitted. A failed query degrades to a short notice and never blocks sending messages.
 
 ### 8.7 Custom Slash Commands
 

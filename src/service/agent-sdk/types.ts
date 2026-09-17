@@ -1,6 +1,6 @@
 import type { CompactMetrics, TurnMetrics } from '../telemetry/types.js'
 
-export type AgentKind = 'claude' | 'codex' | 'opencode'
+export type AgentKind = 'claude' | 'codex' | 'opencode' | 'pi'
 
 export type AgentContextKind = 'recommended_plugins' | 'agents_instructions' | 'environment_context'
 
@@ -61,7 +61,6 @@ export interface AgentUsageStatus {
   subscriptionType?: string | null
   rateLimitsAvailable?: boolean
   windows?: AgentUsageWindow[]
-  installCommand?: string
   message?: string
 }
 
@@ -87,7 +86,7 @@ export interface AgentSession {
   abort(): void
 }
 
-/** Uniform contract implemented per Agent SDK (claude / codex / opencode). */
+/** Uniform contract implemented per Agent SDK (claude / codex / opencode / pi). */
 export interface AgentSdkAdapter {
   readonly kind: AgentKind
   /** Create a brand-new session. */

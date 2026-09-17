@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { resolveGlobalSkillsDir } from '../service/global-config.js'
-import { isGitRepo } from './git.js'
+import { ensureTmpIgnored } from '../service/git-repo.js'
 
 /** Primary skill dir name; kept as the default for single-skill APIs. */
 export const SKILL_DIR_NAME = 'yorz-spec'
@@ -269,38 +269,5 @@ async function dirExists(path: string): Promise<boolean> {
   }
 }
 
-function hasIgnoreEntry(content: string, target: string): boolean {
-  const normalized = target.replace(/\/$/, '')
-  for (const rawLine of content.split('\n')) {
-    const line = rawLine.trim()
-    if (!line || line.startsWith('#')) continue
-    const cleaned = line.replace(/\/$/, '').replace(/^\//, '')
-    if (cleaned === normalized) return true
-  }
-  return false
-}
-
-/**
- * Append `.yorz/tmp` to `<cwd>/.gitignore` when `cwd` is a git repository
- * and the entry isn't already present. Returns `null` when `cwd` is not a
- * git repo (no change attempted).
- */
-export async function ensureTmpIgnored(
-  cwd: string,
-): Promise<{ updated: boolean; path: string } | null> {
-  if (!(await isGitRepo(cwd))) return null
-  const giPath = join(cwd, '.gitignore')
-  let existing = ''
-  try {
-    existing = await readFile(giPath, 'utf8')
-  } catch {
-    existing = ''
-  }
-  if (hasIgnoreEntry(existing, '.yorz/tmp')) {
-    return { updated: false, path: giPath }
-  }
-  const needsNewline = existing.length > 0 && !existing.endsWith('\n')
-  const next = `${existing}${needsNewline ? '\n' : ''}.yorz/tmp\n`
-  await writeFile(giPath, next, 'utf8')
-  return { updated: true, path: giPath }
-}
+// `ensureTmpIgnored` 已下沉到 service 层供 CLI 与 HTTP 路由共用；此处再导出保持既有引用。
+export { ensureTmpIgnored }

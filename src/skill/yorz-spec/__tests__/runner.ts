@@ -60,7 +60,9 @@ export interface AgentCaseResult {
 export function resolveTestAgent(explicit?: AgentName): AgentName {
   if (explicit) return explicit
   const fromEnv = process.env.YORZ_TEST_AGENT
-  if (fromEnv === 'opencode' || fromEnv === 'claude' || fromEnv === 'codex') return fromEnv
+  if (fromEnv === 'opencode' || fromEnv === 'claude' || fromEnv === 'codex' || fromEnv === 'pi') {
+    return fromEnv
+  }
   return 'claude'
 }
 
@@ -357,7 +359,9 @@ export async function writeReport(results: AgentCaseResult[], agent: AgentName):
   }
   const sectionCompleteness: Record<string, number> = {}
   for (const section of REQUIRED_SECTIONS) {
-    const present = results.filter((r) => r.outputSpec.includes(`## `) && r.outputSpec.includes(section)).length
+    const present = results.filter(
+      (r) => r.outputSpec.includes(`## `) && r.outputSpec.includes(section),
+    ).length
     sectionCompleteness[section] = results.length === 0 ? 0 : present / results.length
   }
   const report: AggregatedReport = {

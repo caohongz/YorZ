@@ -10,6 +10,7 @@ import { createGlobalConfigRoutes } from './routes/global-config.js'
 import { createSpecDraftsRoutes } from './routes/spec-drafts.js'
 import { createWorktreeRoutes } from './routes/worktree.js'
 import { createProjectFilesRoutes } from './routes/project-files.js'
+import { createFsRoutes } from './routes/fs.js'
 import { createCommandsRoutes } from './routes/commands.js'
 import { createSystemNotificationsRoutes } from './routes/system-notifications.js'
 import { createStaticRoutes } from './static.js'
@@ -112,6 +113,7 @@ export function createApp(opts: CreateAppOptions): Hono {
   api.route('/', createSpecDraftsRoutes(resolveProject))
   api.route('/', createWorktreeRoutes(opts.registry, worktreeManager))
   api.route('/', createProjectFilesRoutes(resolveProject))
+  api.route('/', createFsRoutes())
   api.route('/', createCommandsRoutes(resolveProject))
   api.route(
     '/',

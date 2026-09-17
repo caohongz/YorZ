@@ -136,7 +136,7 @@ export type AgentConfig =
   | { kind: 'claude' }
   | { kind: 'opencode' }
   | { kind: 'codex' }
-  | { kind: 'custom'; cmd: string; args: string[] }
+  | { kind: 'pi' }
 
 export interface CommandDef {
   id: string
@@ -187,7 +187,7 @@ export interface ProjectConfig {
 
 export interface GlobalConfig {
   agent: {
-    defaultKind: 'claude' | 'opencode' | 'codex'
+    defaultKind: 'claude' | 'opencode' | 'codex' | 'pi'
   }
   notifications: {
     sessionEnd: {
@@ -223,7 +223,7 @@ export interface FileCompletionResult {
   items: string[]
 }
 
-export type AgentKind = 'claude' | 'codex' | 'opencode'
+export type AgentKind = 'claude' | 'codex' | 'opencode' | 'pi'
 
 export type SystemNotificationKind = 'version-update'
 export type SystemNotificationAction = 'none' | 'update-available' | 'updating' | 'restart-ready'
@@ -267,7 +267,6 @@ export interface AgentUsageStatus {
   subscriptionType?: string | null
   rateLimitsAvailable?: boolean
   windows?: AgentUsageWindow[]
-  installCommand?: string
   message?: string
 }
 
@@ -307,6 +306,26 @@ async function extractErrorDetail(res: Response): Promise<string> {
     return text
   }
 }
+
+export interface FsListEntry {
+  name: string
+  path: string
+}
+
+/** `GET /api/fs/list` 的响应；`sep` 是平台分隔符，前端拼路径必须用它而非硬编码 `/`。 */
+export interface FsListResult {
+  path: string
+  parent: string | null
+  sep: string
+  /** 服务端用户主目录；win32 缺省落点是盘符层，没有它「主目录」就没有入口。 */
+  home: string
+  entries: FsListEntry[]
+  truncated: boolean
+}
+
+export type AddProjectOutcome =
+  | { ok: true; project: ProjectListItem }
+  | { ok: false; needGitInit: true; path: string }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init)
@@ -450,6 +469,54 @@ export const api = {
       `${projectBase(pid)}/specs/${encodeURIComponent(id)}/debug`,
     ),
   listProjects: () => request<ProjectListItem[]>('/api/projects'),
+  /**
+   * 列举本地目录，供添加项目时的目录选择器使用。
+   *
+   * @param path 目标目录绝对路径；`undefined` 回落到用户主目录，空串在 Windows 上表示盘符列表层。
+   * @param showHidden 是否纳入点号开头的隐藏目录。
+   */
+  listDirs: (path?: string, showHidden?: boolean) => {
+    const params = new URLSearchParams()
+    if (path !== undefined) params.set('path', path)
+    if (showHidden) params.set('showHidden', '1')
+    const qs = params.toString()
+    return request<FsListResult>(`/api/fs/list${qs ? `?${qs}` : ''}`)
+  },
+  /**
+   * 在指定父目录下新建单层目录，供目录选择器的「新建文件夹」使用。
+   *
+   * @param parent 父目录绝对路径。
+   * @param name 新目录名（单层，不含分隔符）。
+   * @returns 新目录的归一化绝对路径；非 2xx 抛错，由调用方渲染 inline 提示。
+   */
+  createDir: (parent: string, name: string) =>
+    request<{ path: string }>('/api/fs/mkdir', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ parent, name }),
+    }),
+  /**
+   * 添加项目，语义与 CLI `yorz add` 对齐。
+   *
+   * 目标不是 git 仓库时后端返回 409：这里转成 `{ ok: false, needGitInit: true }`
+   * 而非抛错，由调用方弹二次确认后带 `gitInit: true` 重试。
+   */
+  addProject: async (path: string, opts?: { gitInit?: boolean }): Promise<AddProjectOutcome> => {
+    const res = await fetch('/api/projects', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ path, ...(opts?.gitInit ? { gitInit: true } : {}) }),
+    })
+    if (res.status === 409) {
+      const body = (await res.json()) as { needGitInit?: boolean; path?: string }
+      if (body.needGitInit) return { ok: false, needGitInit: true, path: body.path ?? path }
+    }
+    if (!res.ok) {
+      const detail = await extractErrorDetail(res)
+      throw new Error(`${res.status} ${detail || res.statusText}`)
+    }
+    return { ok: true, project: (await res.json()) as ProjectListItem }
+  },
   listSystemNotifications: () => request<SystemNotification[]>('/api/system-notifications'),
   deleteSystemNotification: (id: string) =>
     request<{ ok: true }>(`/api/system-notifications/${encodeURIComponent(id)}`, {

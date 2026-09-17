@@ -1,9 +1,10 @@
-import { execFile, spawn, type StdioOptions } from 'node:child_process'
+import { execFile, spawn, type ChildProcess, type StdioOptions } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, openSync } from 'node:fs'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
 import { homedir } from 'node:os'
+import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { start, type ServeHandle } from '../service/index.js'
 import { resolveGlobalConfigDir } from '../service/global-config.js'
@@ -200,18 +201,17 @@ function startBackgroundServe(opts: ServeCommandOptions): Promise<BackgroundServ
     if (!entry) throw new Error('Cannot resolve CLI entrypoint for background service')
 
     const stdio = backgroundStdio()
-    const child = spawnWithoutWindow(process.execPath, [entry, 'serve', ...backgroundArgs(opts)], {
-      detached: true,
-      stdio: stdio.stdio,
-    })
-    child.unref()
+    const child = spawnBackgroundWorker([entry, 'serve', ...backgroundArgs(opts)], stdio.stdio)
     log().info('background service spawned', {
       pid: child.pid,
+      viaLauncher: process.platform === 'win32',
       stdioFile: stdio.path,
       logFile: getLogger().filePath,
     })
 
-    const runtime = await waitForRuntime(child.pid, START_WAIT_MS)
+    // 经 launcher 启动时 runtime 记录的是 worker 的 pid，与 launcher pid 无关，
+    // 因此按"任意 live entry"等待。
+    const runtime = await waitForRuntime(undefined, START_WAIT_MS)
     if (!runtime) {
       log().warn('timed out waiting for runtime.json', {
         pid: child.pid,
@@ -220,13 +220,16 @@ function startBackgroundServe(opts: ServeCommandOptions): Promise<BackgroundServ
     }
     const port = runtime?.port ?? opts.port ?? DEFAULT_SERVE_PORT
     const url = runtime?.url ?? `http://localhost:${port}/`
-    console.log(`YorZ Service started in background (pid=${child.pid ?? 'unknown'}).`)
+    // win32 经 launcher 启动时 child.pid 是 launcher 的（已退出），优先展示
+    // runtime 里记录的真实 worker pid。
+    const servicePid = runtime?.pid ?? child.pid
+    console.log(`YorZ Service started in background (pid=${servicePid ?? 'unknown'}).`)
     console.log(`Open ${url}${runtime ? '' : ` (or the next free port if ${port} is busy).`}`)
     console.log(`Stop with: yorz serve stop`)
 
     return {
       background: true,
-      pid: child.pid,
+      pid: servicePid,
       url,
       port,
     }
@@ -260,6 +263,56 @@ export function restartWorkerArgs(opts: ServeCommandOptions): string[] {
   return args
 }
 
+/** dist/cli/serve-launcher.cjs；开发/测试态与 src/cli/serve.ts 同目录。 */
+export function resolveServeLauncherPath(): string {
+  // 不用 new URL('./serve-launcher.cjs', import.meta.url)：vite 会把该模式识别为
+  // 静态资产并把文件内容内联成 data: URL，fileURLToPath 收到即抛
+  // "The URL must be of scheme file"。
+  return join(dirname(fileURLToPath(import.meta.url)), 'serve-launcher.cjs')
+}
+
+/**
+ * 拉起后台 worker。
+ *
+ * win32 经 serve-launcher.cjs 中转：launcher 以 CREATE_NO_WINDOW（windowsHide +
+ * 非 detached）启动 worker，使 worker 持有一个"无窗口控制台"。worker 内 SDK 裸
+ * spawn 的 console 子程序（codex / opencode server / agent 工具进程）会继承该
+ * 控制台，不再被 Windows 分配可见 cmd 窗口——否则切 session、启动服务时会闪现
+ * 空白弹窗。launcher 自身 detached（无窗口），并**驻留为 worker 的父进程守卫**，
+ * 直到 worker 退出才退出：worker 始终是有父进程的普通子进程，存活不依赖"孤儿
+ * 进程能否存活"的语义差异；stop 终止 worker 后 launcher 自然退出，不残留。
+ *
+ * 其他平台沿用直接 detached 启动：POSIX 无控制台分配语义，setsid 即可脱离
+ * 父生命周期，保持既有行为不变。
+ */
+/**
+ * launcher 的 argv 约定：`<launcher> -- <execPath> <workerArgs...>`。
+ * execPath 必须显式在 `--` 之后——launcher 用它作为 spawn 的可执行文件，
+ * 缺了就会把 entry 脚本当程序执行（CreateProcess 报 Bad EXE Format / EFTYPE）。
+ */
+export function backgroundWorkerSpawnArgv(
+  launcherPath: string,
+  execPath: string,
+  workerArgv: string[],
+): string[] {
+  return [launcherPath, '--', execPath, ...workerArgv]
+}
+
+function spawnBackgroundWorker(workerArgv: string[], stdio: StdioOptions): ChildProcess {
+  if (process.platform === 'win32') {
+    const launcher = spawnWithoutWindow(
+      process.execPath,
+      backgroundWorkerSpawnArgv(resolveServeLauncherPath(), process.execPath, workerArgv),
+      { detached: true, stdio },
+    )
+    launcher.unref()
+    return launcher
+  }
+  const child = spawnWithoutWindow(process.execPath, workerArgv, { detached: true, stdio })
+  child.unref()
+  return child
+}
+
 export async function runRestartServe(opts: RestartServeOptions = {}): Promise<void> {
   silenceConsoleMirror()
   if (opts.worker) {
@@ -271,12 +324,10 @@ export async function runRestartServe(opts: RestartServeOptions = {}): Promise<v
 
   const entry = process.argv[1]
   if (!entry) throw new Error('Cannot resolve CLI entrypoint for restart')
-  const child = spawnWithoutWindow(process.execPath, [entry, ...restartWorkerArgs(opts)], {
-    detached: true,
-    stdio: 'ignore',
-  })
-  child.unref()
-  console.log(`YorZ Service restart scheduled (pid=${child.pid ?? 'unknown'}).`)
+  // 同 startBackgroundServe：worker 必须脱离父进程生命周期；win32 经 launcher
+  // 中转让 worker 自带无窗口控制台（见 spawnBackgroundWorker 注释）。
+  spawnBackgroundWorker([entry, ...restartWorkerArgs(opts)], 'ignore')
+  console.log(`YorZ Service restart scheduled.`)
 }
 
 async function ensureSkillsInstalledWithLog(cwd: string): Promise<void> {
@@ -684,12 +735,18 @@ async function readWindowsProcessSnapshot(pid: number): Promise<ProcessSnapshot 
       'if ($null -eq $p) { exit 1 }',
       '$p | Select-Object CommandLine,CreationDate | ConvertTo-Json -Compress',
     ].join('; ')
-    const { stdout } = await execFileAsync('powershell.exe', [
-      '-NoProfile',
-      '-NonInteractive',
-      '-Command',
-      script,
-    ])
+    const { stdout } = await execFileAsync(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        script,
+      ],
+      // 后台 Service 进程（detached，无控制台）内执行时，缺 windowsHide 会弹出
+      // 可见的 PowerShell 窗口；前台终端调用则继承控制台，本就无影响。
+      { windowsHide: true },
+    )
     const parsed = JSON.parse(stdout.trim()) as Record<string, unknown>
     const commandLine = typeof parsed.CommandLine === 'string' ? parsed.CommandLine : ''
     const processStartedAt =

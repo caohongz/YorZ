@@ -8,6 +8,11 @@ const E2E_CWD = resolve(__dirname, '.tmp-e2e')
 // Isolated global config dir for the e2e `serve`: keeps runtime.json / projects.json
 // out of the user's real ~/.config/yorz. Cleaned up by globalTeardown.
 const E2E_HOME = resolve(__dirname, '.tmp-e2e-home')
+// Isolated OS home dir for the e2e `serve`: the directory picker lands on the service
+// process's `os.homedir()` by default and has no path input, so add-project specs must
+// be able to create fixtures inside HOME. Pointing it here keeps the real ~ untouched.
+// Created by seed.mjs (runs before serve), removed by globalTeardown.
+const E2E_FS_HOME = resolve(__dirname, '.tmp-e2e-fs-home')
 const SEED_SCRIPT = resolve(__dirname, 'src/gui/src/__e2e__/fixtures/seed.mjs')
 
 export default defineConfig({
@@ -40,7 +45,8 @@ export default defineConfig({
     // (webServer runs before globalSetup, so we can't rely on it here).
     command: `node ${SEED_SCRIPT} && node dist/cli/index.js serve --foreground --port ${E2E_PORT} --cwd ${E2E_CWD}`,
     url: `http://127.0.0.1:${E2E_PORT}/`,
-    env: { YORZ_HOME: E2E_HOME },
+    // USERPROFILE is what Node's os.homedir() reads on Windows; HOME on POSIX.
+    env: { YORZ_HOME: E2E_HOME, HOME: E2E_FS_HOME, USERPROFILE: E2E_FS_HOME },
     reuseExistingServer: false,
     timeout: 30_000,
     stdout: 'pipe',

@@ -93,8 +93,13 @@ function parseBody(value: unknown): PutBody | { error: string } {
   }
   const agentObj = agent as Record<string, unknown>
   const defaultKind = agentObj.defaultKind
-  if (defaultKind !== 'claude' && defaultKind !== 'opencode' && defaultKind !== 'codex') {
-    return { error: 'agent.defaultKind must be claude | opencode | codex' }
+  if (
+    defaultKind !== 'claude' &&
+    defaultKind !== 'opencode' &&
+    defaultKind !== 'codex' &&
+    defaultKind !== 'pi'
+  ) {
+    return { error: 'agent.defaultKind must be claude | opencode | codex | pi' }
   }
   const notifications = obj.notifications
   if (!notifications || typeof notifications !== 'object') {

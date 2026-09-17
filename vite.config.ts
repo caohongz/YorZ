@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config'
 import { builtinModules } from 'node:module'
-import { chmod } from 'node:fs/promises'
+import { chmod, copyFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 const SHEBANG = '#!/usr/bin/env node\n'
@@ -30,6 +30,8 @@ export default defineConfig({
         '@anthropic-ai/claude-agent-sdk',
         '@openai/codex-sdk',
         '@opencode-ai/sdk',
+        '@earendil-works/pi-coding-agent',
+        /^@earendil-works\//,
         'markdown-it',
         /^markdown-it\//,
         'mermaid',
@@ -47,6 +49,11 @@ export default defineConfig({
       async closeBundle() {
         const outFile = resolve(__dirname, 'dist/cli/index.js')
         await chmod(outFile, 0o755)
+        // Windows 后台 service 的中间 launcher：CJS 源码原样随包分发。
+        await copyFile(
+          resolve(__dirname, 'src/cli/serve-launcher.cjs'),
+          resolve(__dirname, 'dist/cli/serve-launcher.cjs'),
+        )
         // Skill files (src/skill/yorz-spec/**) are inlined into the CLI bundle
         // via import.meta.glob in src/cli/install.ts, so no on-disk copy is needed.
       },

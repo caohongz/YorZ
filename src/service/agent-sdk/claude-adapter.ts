@@ -9,6 +9,7 @@ import {
 } from '@anthropic-ai/claude-agent-sdk'
 import { normalizeUsage } from '../telemetry/index.js'
 import type { PhaseUsageSnapshot, TurnMetrics, UsageSnapshot } from '../telemetry/index.js'
+import { PhaseAccumulator, isSpecWrite } from './phase-usage.js'
 import type {
   AgentEvent,
   AgentSdkAdapter,
@@ -122,58 +123,8 @@ function primaryModel(modelUsage: unknown): string | undefined {
   return best
 }
 
-/** Tool calls that count as "the Agent wrote the spec back". */
-const SPEC_WRITE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit'])
-
-/**
- * Does this tool call write a spec document?
- *
- * Matched on the path suffix rather than the configured `specsDir`: the adapter
- * has no access to project config, and threading it down here would couple the
- * SDK boundary to spec layout for the sake of one observation point. The known
- * gap is legacy `docs/specs/<name>.md` paths, which this misses.
- */
-function isSpecWrite(name: unknown, input: unknown): boolean {
-  if (typeof name !== 'string' || !SPEC_WRITE_TOOLS.has(name)) return false
-  const path = isRecord(input) ? input.file_path : undefined
-  return typeof path === 'string' && path.endsWith('spec.md')
-}
-
 function usageOf(message: unknown): unknown {
   return isRecord(message) ? message.usage : undefined
-}
-
-/**
- * Sums per-request usage so one turn can be split at a phase boundary.
- *
- * The SDK reports usage once, at the end of the turn, which cannot answer "how
- * much of this dispatch went into planning?". Every assistant message carries
- * its own request's usage, so summing them as they stream in makes any point
- * mid-turn measurable.
- */
-class PhaseAccumulator {
-  private readonly usage: UsageSnapshot = {}
-  private requests = 0
-  constructor(private readonly startedAt: number) {}
-
-  /** Count one API response, whether or not it reported usage. */
-  add(raw: unknown): void {
-    this.requests += 1
-    const snapshot = normalizeUsage('claude', raw)
-    if (!snapshot) return
-    for (const [key, value] of Object.entries(snapshot)) {
-      const field = key as keyof UsageSnapshot
-      this.usage[field] = (this.usage[field] ?? 0) + (value as number)
-    }
-  }
-
-  snapshot(): PhaseUsageSnapshot {
-    return {
-      usage: { ...this.usage },
-      requests: this.requests,
-      durationMs: Date.now() - this.startedAt,
-    }
-  }
 }
 
 class ClaudeSession implements AgentSession {
@@ -201,7 +152,7 @@ class ClaudeSession implements AgentSession {
     if (this.isNew && !this.started) options.sessionId = this.id
     else options.resume = this.id
 
-    const phase = new PhaseAccumulator(Date.now())
+    const phase = new PhaseAccumulator('claude', Date.now())
     let planPhase: PhaseUsageSnapshot | undefined
     /** Fold the phase split in at the last moment, so `observedTotal` is final. */
     const withPhases = (base?: TurnMetrics): TurnMetrics => ({
@@ -249,7 +200,7 @@ class ClaudeSession implements AgentSession {
             } else if (b.type === 'tool_use') {
               // Snapshot *after* this request was accumulated: writing the spec
               // back is the plan phase's own output, not execution's first cost.
-              if (!planPhase && isSpecWrite(b.name, b.input)) planPhase = phase.snapshot()
+              if (!planPhase && isSpecWrite('claude', b.name, b.input)) planPhase = phase.snapshot()
               yield { type: 'tool-use', name: String(b.name ?? '?'), input: b.input ?? {} }
             }
           }

@@ -79,3 +79,9 @@ pnpm dev:gui
 # 运行测试
 pnpm test
 ```
+
+## 交流群
+
+_欢迎加入交流群：QQ 群 `224778869`_
+
+<img src="./qq-group.png" width="200px"> <img src="./wechat-group.png" width="200px">

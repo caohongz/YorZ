@@ -93,7 +93,7 @@ yorz serve --port 7424
 
 ## 3. 访问移动端 PWA
 
-由于 YorZ Service 默认只监听本机回环地址，建议使用 Tailscale 在同一个 tailnet 内通过 HTTPS 访问手机端 PWA。
+由于 YorZ Service 默认只监听本机回环地址，建议使用 [Tailscale](https://github.com/tailscale/tailscale) 在同一个 tailnet 内通过 HTTPS 访问手机端 PWA。
 
 先确认 YorZ Service 已启动，默认端口是 `7423`：
 
@@ -117,11 +117,7 @@ https://<tailscale 给你生成的专属域名>/
 |-- proxy http://127.0.0.1:7423
 ```
 
-在手机浏览器中打开 Tailscale 给出的 HTTPS 域名。YorZ 会探测移动端浏览器并自动切换到手机端 PWA：
-
-```text
-https://fenghenmacbook-pro.taildce4ce.ts.net/
-```
+在手机浏览器中打开 Tailscale 给出的 HTTPS 域名，YorZ 会探测移动端浏览器并自动切换到手机端 PWA。
 
 如果希望把 YorZ 安装到手机桌面，这是可选步骤。先在系统设置中确认当前浏览器拥有“桌面快捷方式”权限，然后打开浏览器设置菜单，点击“安装并创建快捷方式”。
 

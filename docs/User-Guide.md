@@ -100,7 +100,7 @@ First make sure YorZ Service is running. The default port is `7423`:
 yorz serve
 ```
 
-Then install Tailscale on both your PC and your phone, enable HTTPS, and confirm that both devices are signed in to the same tailnet.
+Then install [Tailscale](https://github.com/tailscale/tailscale) on both your PC and your phone, enable HTTPS, and confirm that both devices are signed in to the same tailnet.
 
 On the PC, run:
 
@@ -116,11 +116,7 @@ https://<your Tailscale-generated domain>/
 |-- proxy http://127.0.0.1:7423
 ```
 
-Open the HTTPS domain from your phone browser. YorZ detects mobile browsers and automatically switches to the mobile PWA:
-
-```text
-https://fenghenmacbook-pro.taildce4ce.ts.net/
-```
+Open the HTTPS domain from your phone browser, YorZ detects mobile browsers and automatically switches to the mobile PWA.
 
 Installing YorZ to your phone home screen is optional. Before doing that, confirm in system settings that your browser has permission to create home screen shortcuts, then open the browser settings menu and choose "Install and create shortcut".
 

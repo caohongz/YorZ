@@ -279,7 +279,8 @@ export function resolveProjectAgentKind(
   if (
     projectAgent.kind === 'codex' ||
     projectAgent.kind === 'opencode' ||
-    projectAgent.kind === 'pi'
+    projectAgent.kind === 'pi' ||
+    projectAgent.kind === 'mimo'
   ) {
     return projectAgent.kind
   }

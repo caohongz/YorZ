@@ -36,7 +36,7 @@ interface Props {
   onClose: () => void
 }
 
-type GlobalAgentKind = 'claude' | 'opencode' | 'codex' | 'pi'
+type GlobalAgentKind = 'claude' | 'opencode' | 'codex' | 'pi' | 'mimo'
 type PowerInhibitMode = 'system-default' | 'prevent-display-sleep' | 'keep-system-awake'
 
 export const GlobalConfigDialog: Component<Props> = (props) => {
@@ -154,6 +154,7 @@ export const GlobalConfigDialog: Component<Props> = (props) => {
     if (kind === 'codex') return t('projectConfig.agentCodex')
     if (kind === 'opencode') return t('projectConfig.agentOpencode')
     if (kind === 'pi') return t('projectConfig.agentPi')
+    if (kind === 'mimo') return t('projectConfig.agentMimo')
     return t('projectConfig.agentClaude')
   }
 
@@ -227,7 +228,7 @@ export const GlobalConfigDialog: Component<Props> = (props) => {
               <RadioGroupLabel class="mb-1.5 w-full font-medium">
                 {t('globalConfig.agentDefault')}
               </RadioGroupLabel>
-              {(['claude', 'opencode', 'codex', 'pi'] as const).map((kind) => (
+              {(['claude', 'opencode', 'codex', 'pi', 'mimo'] as const).map((kind) => (
                 <RadioGroupItem value={kind} class="flex items-center gap-1.5">
                   <RadioGroupItemInput />
                   <RadioGroupItemControl />

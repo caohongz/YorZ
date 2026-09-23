@@ -20,6 +20,7 @@
     "decision-os",
     "claude-code",
     "opencode",
+    "mimo-code",
     "workflow",
     "cli"
   ],
@@ -53,6 +54,7 @@
     "@anthropic-ai/claude-agent-sdk": "^0.3.207",
     "@earendil-works/pi-coding-agent": "^0.85.1",
     "@hono/node-server": "^2.0.4",
+    "@mimo-ai/sdk": "0.1.14",
     "@openai/codex-sdk": "^0.153.4",
     "@opencode-ai/sdk": "^1.17.18",
     "chokidar": "^5.0.0",

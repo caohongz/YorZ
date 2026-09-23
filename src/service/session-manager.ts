@@ -218,7 +218,7 @@ export class SessionManager {
     const byId = new Map<string, SessionInfo>(indexed.map((s) => [s.id, s]))
     const nativeIds = new Set<string>()
     // Merge SDK-native session listing (kinds that support it) for discovery.
-    for (const kind of ['claude', 'codex', 'opencode', 'pi'] as AgentKind[]) {
+    for (const kind of ['claude', 'codex', 'opencode', 'pi', 'mimo'] as AgentKind[]) {
       const adapter = this.adapters.get(kind)
       if (!adapter.capabilities().listSessions) continue
       try {

@@ -384,6 +384,7 @@ export const en = {
     agentOpencode: 'OpenCode',
     agentCodex: 'Codex',
     agentPi: 'Pi',
+    agentMimo: 'MiMo Code',
     agent: 'Agent',
     specsDir: 'Spec directory',
     specsDirHint: 'Relative to project root, auto-created if missing',

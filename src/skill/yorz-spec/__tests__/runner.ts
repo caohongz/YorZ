@@ -60,7 +60,13 @@ export interface AgentCaseResult {
 export function resolveTestAgent(explicit?: AgentName): AgentName {
   if (explicit) return explicit
   const fromEnv = process.env.YORZ_TEST_AGENT
-  if (fromEnv === 'opencode' || fromEnv === 'claude' || fromEnv === 'codex' || fromEnv === 'pi') {
+  if (
+    fromEnv === 'opencode' ||
+    fromEnv === 'claude' ||
+    fromEnv === 'codex' ||
+    fromEnv === 'pi' ||
+    fromEnv === 'mimo'
+  ) {
     return fromEnv
   }
   return 'claude'

@@ -97,9 +97,10 @@ function parseBody(value: unknown): PutBody | { error: string } {
     defaultKind !== 'claude' &&
     defaultKind !== 'opencode' &&
     defaultKind !== 'codex' &&
-    defaultKind !== 'pi'
+    defaultKind !== 'pi' &&
+    defaultKind !== 'mimo'
   ) {
-    return { error: 'agent.defaultKind must be claude | opencode | codex | pi' }
+    return { error: 'agent.defaultKind must be claude | opencode | codex | pi | mimo' }
   }
   const notifications = obj.notifications
   if (!notifications || typeof notifications !== 'object') {

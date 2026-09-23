@@ -187,6 +187,18 @@ export class ProjectRegistry {
     })
   }
 
+  /** Drop cached instances so `agent.kind: 'inherit'` re-resolves `defaultKind`. */
+  async reloadAll(): Promise<void> {
+    const ids = [...this.cache.keys()]
+    await Promise.all(
+      ids.map((id) =>
+        this.release(id).catch(() => {
+          // best-effort
+        }),
+      ),
+    )
+  }
+
   async closeAll(): Promise<void> {
     const tasks: Array<Promise<void>> = []
     for (const c of this.cache.values()) {
@@ -279,7 +291,8 @@ export function resolveProjectAgentKind(
   if (
     projectAgent.kind === 'codex' ||
     projectAgent.kind === 'opencode' ||
-    projectAgent.kind === 'pi'
+    projectAgent.kind === 'pi' ||
+    projectAgent.kind === 'mimo'
   ) {
     return projectAgent.kind
   }

@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
-export type AgentName = 'claude' | 'opencode' | 'codex' | 'pi'
+export type AgentName = 'claude' | 'opencode' | 'codex' | 'pi' | 'mimo'
 
 export type AgentStreamFormat = 'json' | 'text'
 
@@ -36,7 +36,7 @@ export function resolveAgentByName(name: AgentName): AgentCmd {
   return BUILTIN[name]
 }
 
-export type AgentKind = 'claude' | 'codex' | 'opencode' | 'pi'
+export type AgentKind = 'claude' | 'codex' | 'opencode' | 'pi' | 'mimo'
 
 /**
  * Resolve which Agent SDK adapter a project uses, from `.yorz/config.json`'s
@@ -63,11 +63,15 @@ export function resolveAgentKind(cwd: string): AgentKind {
   if (!data || typeof data !== 'object') return 'claude'
   const agent = (data as { agent?: unknown }).agent
   if (typeof agent === 'string') {
-    return agent === 'codex' || agent === 'opencode' || agent === 'pi' ? agent : 'claude'
+    return agent === 'codex' || agent === 'opencode' || agent === 'pi' || agent === 'mimo'
+      ? agent
+      : 'claude'
   }
   if (!agent || typeof agent !== 'object') return 'claude'
   const kind = (agent as { kind?: unknown }).kind
-  return kind === 'codex' || kind === 'opencode' || kind === 'pi' ? kind : 'claude'
+  return kind === 'codex' || kind === 'opencode' || kind === 'pi' || kind === 'mimo'
+    ? kind
+    : 'claude'
 }
 
 const BUILTIN: Record<AgentName, AgentCmd> = {
@@ -129,6 +133,15 @@ const BUILTIN: Record<AgentName, AgentCmd> = {
     args: (prompt) => ['-p', prompt],
     streamFormat: 'text',
   },
+  mimo: {
+    cmd: 'mimo',
+    // MiMo Code 的无人值守入口是 `mimo run <message>`（OpenCode 系同构）；
+    // `--dangerously-skip-permissions` 对齐 claude bypassPermissions / opencode
+    // skip-permissions 的后台执行语义。`--format json` 让事件行可被 JSONL 解析，
+    // 与 claude 的 stream-json 同属 `streamFormat: 'json'` 路径。
+    args: (prompt) => ['run', '--dangerously-skip-permissions', '--format', 'json', prompt],
+    streamFormat: 'json',
+  },
 }
 
 export function resolveAgentCmd(opts: ResolveAgentCmdOptions): AgentCmd {
@@ -173,6 +186,7 @@ function readAgentCmd(cwd: string): AgentCmd {
     if (agent === 'opencode') return BUILTIN.opencode
     if (agent === 'codex') return BUILTIN.codex
     if (agent === 'pi') return BUILTIN.pi
+    if (agent === 'mimo') return BUILTIN.mimo
     return BUILTIN.claude
   }
   if (!agent || typeof agent !== 'object') return BUILTIN.claude
@@ -180,5 +194,6 @@ function readAgentCmd(cwd: string): AgentCmd {
   if (kind === 'opencode') return BUILTIN.opencode
   if (kind === 'codex') return BUILTIN.codex
   if (kind === 'pi') return BUILTIN.pi
+  if (kind === 'mimo') return BUILTIN.mimo
   return BUILTIN.claude
 }

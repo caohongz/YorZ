@@ -9,6 +9,7 @@ import {
 } from 'solid-js'
 import { api, type GlobalConfig } from '../lib/api.js'
 import { DEFAULT_GLOBAL_CONFIG, globalConfig, saveGlobalConfig } from '../lib/global-config.js'
+import { notifyAgentKindChange } from '../lib/project.js'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog.jsx'
 import { Button } from './ui/button.jsx'
 import { Checkbox, CheckboxControl, CheckboxLabel } from './ui/checkbox.jsx'
@@ -36,7 +37,7 @@ interface Props {
   onClose: () => void
 }
 
-type GlobalAgentKind = 'claude' | 'opencode' | 'codex' | 'pi'
+type GlobalAgentKind = 'claude' | 'opencode' | 'codex' | 'pi' | 'mimo'
 type PowerInhibitMode = 'system-default' | 'prevent-display-sleep' | 'keep-system-awake'
 
 export const GlobalConfigDialog: Component<Props> = (props) => {
@@ -154,6 +155,7 @@ export const GlobalConfigDialog: Component<Props> = (props) => {
     if (kind === 'codex') return t('projectConfig.agentCodex')
     if (kind === 'opencode') return t('projectConfig.agentOpencode')
     if (kind === 'pi') return t('projectConfig.agentPi')
+    if (kind === 'mimo') return t('projectConfig.agentMimo')
     return t('projectConfig.agentClaude')
   }
 
@@ -179,8 +181,10 @@ export const GlobalConfigDialog: Component<Props> = (props) => {
   }
 
   function updateAgentDefault(kind: GlobalAgentKind): void {
+    const prev = agentDefault()
     setAgentDefault(kind)
     void persistPatch({ agent: { defaultKind: kind } })
+    if (kind !== prev) notifyAgentKindChange()
   }
 
   function updateBanner(value: boolean): void {
@@ -227,7 +231,7 @@ export const GlobalConfigDialog: Component<Props> = (props) => {
               <RadioGroupLabel class="mb-1.5 w-full font-medium">
                 {t('globalConfig.agentDefault')}
               </RadioGroupLabel>
-              {(['claude', 'opencode', 'codex', 'pi'] as const).map((kind) => (
+              {(['claude', 'opencode', 'codex', 'pi', 'mimo'] as const).map((kind) => (
                 <RadioGroupItem value={kind} class="flex items-center gap-1.5">
                   <RadioGroupItemInput />
                   <RadioGroupItemControl />

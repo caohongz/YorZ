@@ -73,6 +73,30 @@ describe('resolveAgentCmd', () => {
     expect(result.env).toBeUndefined()
   })
 
+  it('picks mimo when config sets agent=mimo', async () => {
+    const cwd = await tempCwd()
+    await writeConfig(cwd, 'mimo')
+    const result = resolveAgentCmd({ cwd, env: {} })
+    expect(result.cmd).toBe('mimo')
+    expect(result.args('x')).toEqual([
+      'run',
+      '--dangerously-skip-permissions',
+      '--format',
+      'json',
+      'x',
+    ])
+    expect(result.streamFormat).toBe('json')
+    expect(result.env).toBeUndefined()
+  })
+
+  it('picks mimo from the object schema too', async () => {
+    const cwd = await tempCwd()
+    await writeConfig(cwd, { kind: 'mimo' })
+    const result = resolveAgentCmd({ cwd, env: {} })
+    expect(result.cmd).toBe('mimo')
+    expect(result.streamFormat).toBe('json')
+  })
+
   it('picks pi from the object schema too', async () => {
     const cwd = await tempCwd()
     await writeConfig(cwd, { kind: 'pi' })

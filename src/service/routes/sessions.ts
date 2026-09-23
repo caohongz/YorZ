@@ -31,7 +31,7 @@ async function loadCustomInstructions(projectPath: string): Promise<CustomInstru
   return mergeCustomInstructions(project, global)
 }
 
-const KINDS: AgentKind[] = ['claude', 'codex', 'opencode', 'pi']
+const KINDS: AgentKind[] = ['claude', 'codex', 'opencode', 'pi', 'mimo']
 const DRAFT_ID_RE = /^[a-zA-Z0-9-]{1,64}$/
 
 /**

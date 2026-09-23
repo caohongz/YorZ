@@ -126,6 +126,31 @@ describe('usage normalization', () => {
     expect(normalizeUsage('pi', { input_tokens: 3, output_tokens: 4 })).toBeUndefined()
   })
 
+  it('maps the mimo AssistantMessage shape with sibling cost and tokens', () => {
+    expect(
+      normalizeUsage('mimo', {
+        cost: 0.034,
+        tokens: {
+          input: 10,
+          output: 5,
+          reasoning: 2,
+          cache: { read: 100, write: 20 },
+        },
+      }),
+    ).toEqual({
+      inputTokens: 10,
+      outputTokens: 5,
+      reasoningTokens: 2,
+      cacheReadTokens: 100,
+      cacheCreateTokens: 20,
+      costUsd: 0.034,
+    })
+  })
+
+  it('does not fall back to the claude snake_case parser for mimo', () => {
+    expect(normalizeUsage('mimo', { input_tokens: 3, output_tokens: 4 })).toBeUndefined()
+  })
+
   it('maps the opencode nested cache shape', () => {
     expect(
       normalizeUsage('opencode', {

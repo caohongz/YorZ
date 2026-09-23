@@ -19,7 +19,9 @@ export function normalizeUsage(kind: AgentKind, raw: unknown): UsageSnapshot | u
         ? fromOpenCode(obj)
         : kind === 'pi'
           ? fromPi(obj)
-          : fromClaude(obj)
+          : kind === 'mimo'
+            ? fromMimo(obj)
+            : fromClaude(obj)
   return isEmpty(snapshot) ? undefined : snapshot
 }
 
@@ -76,6 +78,27 @@ function fromPi(u: Record<string, unknown>): UsageSnapshot {
     cacheCreateTokens: num(u.cacheWrite),
     reasoningTokens: num(u.reasoning),
     costUsd: num(cost.total),
+  })
+}
+
+/**
+ * MiMo Code `AssistantMessage` 截断：`cost` 与 `tokens` 是兄弟字段，不是像 Pi 那样
+ * 把金额嵌在 `cost.total`。不要复用 `fromOpenCode`——它只读 `tokens.*` 且从不产出
+ * `costUsd`，在 mimo 上会把成本整段丢掉。
+ */
+function fromMimo(u: Record<string, unknown>): UsageSnapshot {
+  const tokens = u.tokens && typeof u.tokens === 'object' ? (u.tokens as Record<string, unknown>) : {}
+  const cache =
+    tokens.cache && typeof tokens.cache === 'object'
+      ? (tokens.cache as Record<string, unknown>)
+      : {}
+  return compact({
+    inputTokens: num(tokens.input),
+    outputTokens: num(tokens.output),
+    reasoningTokens: num(tokens.reasoning),
+    cacheReadTokens: num(cache.read),
+    cacheCreateTokens: num(cache.write),
+    costUsd: num(u.cost),
   })
 }
 

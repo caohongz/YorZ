@@ -187,7 +187,8 @@ export class SessionManager {
    */
   async latestSessionForSpec(specId: string): Promise<{ sessionId: string; kind: AgentKind }> {
     const existing = await this.findSessionForSpec(specId)
-    if (existing) return existing
+    // Stale sessions keep their original kind; a kind change starts a new round.
+    if (existing && existing.kind === this.defaultKind) return existing
     return this.createSessionForSpec(specId)
   }
 
@@ -218,7 +219,7 @@ export class SessionManager {
     const byId = new Map<string, SessionInfo>(indexed.map((s) => [s.id, s]))
     const nativeIds = new Set<string>()
     // Merge SDK-native session listing (kinds that support it) for discovery.
-    for (const kind of ['claude', 'codex', 'opencode', 'pi'] as AgentKind[]) {
+    for (const kind of ['claude', 'codex', 'opencode', 'pi', 'mimo'] as AgentKind[]) {
       const adapter = this.adapters.get(kind)
       if (!adapter.capabilities().listSessions) continue
       try {

@@ -3,18 +3,22 @@ feature: mimo-code-agent-support
 status: delivered
 updated: 2026-09-23
 branch: feat/mimo-code-agent-support
-commits: f7df661..f7df661 # docs-only delivery; no implementation commits
+commits: f7df661..ed07228
 ---
 
 # YorZ Agent 接入 mimo-code 可行性调研与落地方案
 
 ## Report
 
-**What was built** — 本文档交付「mimo-code 接入 YorZ Agent 层」的可行性结论与可落地方案（调研报告，不含业务代码）。结论：**可行**。`@mimo-ai/sdk` 0.1.15 与 `@opencode-ai/sdk` 同构（`createOpencode` / `OpencodeClient`，MiMo Code 基于 OpenCode 分叉），可覆盖 `AgentSdkAdapter` 的 create/resume/list/messages/abort，并用 `promptAsync` + SSE `message.part.updated` 达到 Claude/Codex 级流式回放；`AssistantMessage.tokens`+`cost` 可进入 telemetry。与 Claude Code / Codex 支持面相比，**唯一硬缺口是配额窗口型 `usageStatus`**（SDK 无 rate-limit API；`mimo stats` 仅累计量）。推荐 P1 声明 `usageStatus: false` 先达主支持面，P2 可选用 `local-snapshot`/`external-cli` 提供无窗口降级。改动面按 pi-agent-adapter 先例列全，特别标出 `resolveProjectAgentKind` 等静默回落闸门与移动端 `ProjectSettings.tsx` 硬编码选项表。
+**What was built** — 两阶段交付同一条能力线。
 
-**Verification** — `PASS`：文档引用的 21 个源码路径均存在；`AgentKind` / `normalizeUsage` / `SPEC_WRITE_TOOLS` / Claude·Codex·OpenCode capabilities 主张与源码一致；i18n 键齐全。`PASS`：`@mimo-ai/sdk` 0.1.15 类型面（`SessionListData`/`promptAsync`/`SessionAbortData`/`ToolState`）与 `mimo --help`/`run`/`stats`/`session`/`export` 实机输出一致。`PASS`（独立评审 + 复审）：T1–T5 验收闭环；上一轮 1 critical（漏 `resolveProjectAgentKind` 等白名单）+ 2 major（移动端误判、cost/tokens 归一化）+ 3 minor 已全部修入正文并复审 PASS。无代码变更，未跑 `pnpm test`/`typecheck`（docs-only）。
+*调研*：结论为**可行**。`@mimo-ai/sdk` 与 `@opencode-ai/sdk` 同构（MiMo Code 基于 OpenCode 分叉），可覆盖 `AgentSdkAdapter` 全接口；SSE `message.part.updated` 可达 Claude/Codex 级流式回放。与 Claude/Codex 的唯一硬缺口是配额窗口型 `usageStatus`（P1 声明 `false`，P2 可再补 local-snapshot）。
 
-**Journey log** — (1) mimo-code 即 OpenCode 架构分叉，SDK 仍导出 `OpencodeClient` 命名：集成形状应对照 `opencode-adapter.ts` 而非 Claude/Codex，成本更低。(2) 评审揪出的 `resolveProjectAgentKind` 类白名单是静默回落点——扩 AgentKind 时只有 `BUILTIN: Record<AgentName, AgentCmd>` 有编译保护，其余漏改配置「保存成功但跑的还是 claude」。(3) `normalizeUsage` 的 kind 分发链同样是静默回落点（未知 kind → `fromClaude`），与 resolve* 闸门同类，易漏。(4) 移动端 `ProjectSettings.kindOptions()` 硬编码，类型扩张不驱动 UI；「复用 AgentKind 就自动生效」是误判。(5) `usageStatus` 窗口级对齐依赖 MiMo 官方 API，P1 明确降级以免阻塞主支持面。
+*实现*：落地 `MimoAdapter`（`@src/service/agent-sdk/mimo-adapter.ts`），P1 能力面与 OpenCode/Pi 对齐、流式强于 OpenCode——`send()` 走 SSE text/tool-use/tool-result/compact，SSE 不可用时回退整段 part 回放；`turn-completed` 携 `fromMimo` 归一化 usage（`cost`/`tokens` 兄弟字段，含 `costUsd`）。全链路接线含 5 处 `AgentKind` 联合、`resolveProjectAgentKind` / 双 `normalizeAgent` / `resolveAgentKind`+`readAgentCmd` / `normalizeUsage` 分发 / `resolveTestAgent` 等静默回落闸门、桌面与移动端选项表、i18n、`BUILTIN.mimo`（`mimo run --dangerously-skip-permissions --format json`）。依赖锁 `@mimo-ai/sdk@0.1.14`（0.1.15 触发仓库最短发布龄策略）。
+
+**Verification** — `PASS`：`vitest` 定向 45/45（mimo-adapter 9 / agent-config 12 / telemetry 24）。`PASS`：全量 `vitest run` 982 passed / 2 skipped / 96 文件全过（含 `lint.test.ts`）。`PRE-EXISTING`：`tsc -b` 仅 `codex-adapter.ts` CodexOptions 既有类型错误（与本次无关，stash 前后一致）。白名单 grep 清点：生产代码无遗漏旧枚举。独立评审 1 critical（SSE 会话过滤取错字段）+ 3 major（尾部不回放 / 订阅泄漏 / 30ms close 竞态）+ 3 minor 已修入实现并复审闭环：`eventSessionId` 取 `part.sessionID`/`info.sessionID`；prompt 结算后 `stream.return()`+`queue.close()`（无定时器）；`replayMissedParts` 恒做尾合并；接入 `PhaseAccumulator`/`planPhase`；补 compact/error/跨会话/断流合并用例。
+
+**Journey log** — (1) 集成形状对照 `opencode-adapter.ts` 而非 Claude/Codex，成本更低。(2) `resolveProjectAgentKind` / `normalizeUsage` 等白名单是静默回落点，漏改不报编译错。(3) 移动端 `kindOptions()` 硬编码，必须显式增项。(4) `fromMimo` 不能复用 `fromOpenCode`：`cost` 是 `AssistantMessage` 兄弟字段。(5) worktree 文件系统对 pnpm workspace 清单写不支持，依赖在 `/tmp` 解析后回写 lockfile；`@mimo-ai/sdk@0.1.15` 因 minimumReleaseAge 降为 `0.1.14`。(6) MiMo SSE 的 `properties` 不带顶层 sessionID，过滤必须走 `part.sessionID`/`info.sessionID`，否则跨会话串扰；turn 收尾以 prompt payload 做 dedupe 后的 tail merge，而非 timed close。
 
 ## [S1] Problem
 
@@ -182,11 +186,11 @@ Skill 注入路径无关 Agent（`~/.config/yorz/skills/` + prompt 绝对路径�
 
 ## [S3] Out of Scope
 
-- 实现 `mimo-adapter.ts` 及配置/UI/测试落地（本文档只交付调研结论与可落地方案）。
-- 复刻 Claude/Codex 的 rate-limit **窗口**型 `usageStatus`（依赖 MiMo 官方 API，见 [S2.6]）。
-- 移动端 `gui-mobile` 的 label 全面 i18n 整改。注意：移动端 **不能**「仅复用 `AgentKind` 就自动生效」——`ProjectSettings.tsx` 维护独立的硬编码选项表，**接入 mimo 时必须显式增一项**（已列入 [S2.5]）；本 Out of Scope 仅排除的是把该硬编码表整体改成 i18n 的顺带重构。
+- 复刻 Claude/Codex 的 rate-limit **窗口**型 `usageStatus`（依赖 MiMo 官方 API，见 [S2.6]）；P1 已按策略声明 `usageStatus: false`。
+- 移动端 `gui-mobile` 的 label 全面 i18n 整改（本次仅追加 `MiMo` 硬编码一项，对齐既有列表；不顺带重构为 i18n）。
 - MiMo 账号登录、模型选择、计费开通引导。
 - 修改 MiMoCode / OpenCode 上游。
+- 修复既有 `codex-adapter.ts` 的 `CodexOptions` 类型错误（与本次无关）。
 
 ## Tasks
 
@@ -195,3 +199,7 @@ Skill 注入路径无关 Agent（`~/.config/yorz/skills/` + prompt 绝对路径�
 - [x] T3: 产出能力对齐矩阵与可行性结论 — acceptance: [S2.3] 覆盖 list/get/stream/usageStatus 且标明唯一硬缺口 (covers: S2.3)
 - [x] T4: 给出推荐集成方案（事件映射、usage 归一化、usageStatus 策略） — acceptance: [S2.4] 可直接指导实现且与契约字段一一对应；usage 明确 `fromMimo` raw 形状与 `cost`/`tokens` 兄弟字段关系 (covers: S2.4)
 - [x] T5: 列出实施改动面与风险 — acceptance: [S2.5] 覆盖全部白名单闸门（含 `resolveProjectAgentKind`、双 `normalizeAgent`、`resolveAgentKind`/`readAgentCmd`、`resolveTestAgent`、移动端 `kindOptions`）；[S2.6] 缺口不阻塞 P1 (covers: S2.5; S2.6)
+- [x] T6: 实现 `MimoAdapter` 与事件映射 — acceptance: `send()` 产出 session-started/text/tool-use/tool-result/turn-completed/compact/error；SSE 失败可回退 part 回放；`capabilities` 为 `{listSessions:true,getMessages:true,usageStatus:false}` (covers: S2.4)
+- [x] T7: 落地类型/白名单/UI 全触点 — acceptance: [S2.5] 每行均有对应 diff；`grep` 生产代码无遗漏旧枚举 (covers: S2.5)
+- [x] T8: telemetry `fromMimo` + `SPEC_WRITE_TOOLS.mimo` — acceptance: usage 映射含 `costUsd`；phase 工具集含 `write/edit/patch/Write/Edit` (covers: S2.4; S2.5)
+- [x] T9: 测试与验证 — acceptance: mimo-adapter/agent-config/telemetry 单测通过；全量 vitest 无新增失败；typecheck 无新增错误 (covers: S2.4; S2.5)

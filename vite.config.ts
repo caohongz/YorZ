@@ -28,6 +28,8 @@ export default defineConfig({
         'chokidar',
         'gray-matter',
         '@anthropic-ai/claude-agent-sdk',
+        '@mimo-ai/sdk',
+        /^@mimo-ai\//,
         '@openai/codex-sdk',
         '@opencode-ai/sdk',
         '@earendil-works/pi-coding-agent',

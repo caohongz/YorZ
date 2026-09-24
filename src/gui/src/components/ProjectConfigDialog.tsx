@@ -1,5 +1,6 @@
 import { createEffect, createSignal, Show, type Component } from 'solid-js'
 import { api, type AgentConfig, type ProjectConfig } from '../lib/api.js'
+import { notifyAgentKindChange } from '../lib/project.js'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog.jsx'
 import { Button } from './ui/button.jsx'
 import { Input } from './ui/input.jsx'
@@ -22,12 +23,13 @@ interface Props {
   onSaved?: (message: string) => void
 }
 
-type AgentKind = 'inherit' | 'claude' | 'opencode' | 'codex' | 'pi'
+type AgentKind = 'inherit' | 'claude' | 'opencode' | 'codex' | 'pi' | 'mimo'
 
 const DEFAULT_SPECS_DIR = '.yorz/specs'
 
 export const ProjectConfigDialog: Component<Props> = (props) => {
   const [kind, setKind] = createSignal<AgentKind>('inherit')
+  const [initialKind, setInitialKind] = createSignal<AgentKind>('inherit')
   const [specsDir, setSpecsDir] = createSignal(DEFAULT_SPECS_DIR)
   const [initialSpecsDir, setInitialSpecsDir] = createSignal(DEFAULT_SPECS_DIR)
   const [loading, setLoading] = createSignal(false)
@@ -52,6 +54,7 @@ export const ProjectConfigDialog: Component<Props> = (props) => {
 
   function applyConfig(cfg: ProjectConfig) {
     setKind(cfg.agent.kind)
+    setInitialKind(cfg.agent.kind)
     const dir = cfg.specsDir || DEFAULT_SPECS_DIR
     setSpecsDir(dir)
     setInitialSpecsDir(dir)
@@ -66,6 +69,7 @@ export const ProjectConfigDialog: Component<Props> = (props) => {
     if (k === 'codex') return t('projectConfig.agentCodex')
     if (k === 'opencode') return t('projectConfig.agentOpencode')
     if (k === 'pi') return t('projectConfig.agentPi')
+    if (k === 'mimo') return t('projectConfig.agentMimo')
     return t('projectConfig.agentClaude')
   }
 
@@ -85,6 +89,7 @@ export const ProjectConfigDialog: Component<Props> = (props) => {
       if (dir !== initialSpecsDir()) {
         msg += t('projectConfig.oldSpecsHint')
       }
+      if (agent.kind !== initialKind()) notifyAgentKindChange()
       props.onSaved?.(msg)
       props.onClose()
     } catch (err) {
@@ -117,7 +122,7 @@ export const ProjectConfigDialog: Component<Props> = (props) => {
               <RadioGroupLabel class="mb-1.5 w-full font-medium">
                 {t('projectConfig.agent')}
               </RadioGroupLabel>
-              {(['inherit', 'claude', 'opencode', 'codex', 'pi'] as const).map((k) => (
+              {(['inherit', 'claude', 'opencode', 'codex', 'pi', 'mimo'] as const).map((k) => (
                 <RadioGroupItem value={k} class="flex items-center gap-1.5">
                   <RadioGroupItemInput />
                   <RadioGroupItemControl />

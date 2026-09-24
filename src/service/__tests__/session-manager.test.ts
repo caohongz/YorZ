@@ -305,6 +305,21 @@ describe('SessionManager per-spec sessions', () => {
     expect(await store.list()).toHaveLength(2)
   })
 
+  it('latestSessionForSpec does not reuse a session whose kind is not the current default', async () => {
+    // Simulates switching the project agent to mimo after a claude round:
+    // the claude session must not absorb the next user-driven turn.
+    const { mgr, store } = await makeManager(fakeAdapter({}))
+    const claude = await mgr.createSessionForSpec('spec-a')
+    expect(claude.kind).toBe('claude')
+
+    ;(mgr as unknown as { defaultKind: AgentKind }).defaultKind = 'mimo'
+
+    const next = await mgr.latestSessionForSpec('spec-a')
+    expect(next.sessionId).not.toBe(claude.sessionId)
+    expect(next.kind).toBe('mimo')
+    expect(await store.list()).toHaveLength(2)
+  })
+
   it('listBySpec keeps rounds in chronological order regardless of activity', async () => {
     const { mgr, store } = await makeManager(fakeAdapter({}))
 

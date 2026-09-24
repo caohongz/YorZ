@@ -131,7 +131,7 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
-      '/api': 'http://localhost:7424',
+      '/api': 'http://localhost:7524',
     },
   },
 })

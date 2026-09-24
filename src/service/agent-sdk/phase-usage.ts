@@ -18,6 +18,8 @@ const SPEC_WRITE_TOOLS: Record<AgentKind, ReadonlySet<string>> = {
   codex: new Set<string>(),
   opencode: new Set(['write', 'edit', 'patch']),
   pi: new Set(['write', 'edit']),
+  // OpenCode 系工具名大小写并存（本地 `mimo stats` 实测 Write/write、Edit/edit），且含 patch。
+  mimo: new Set(['write', 'edit', 'patch', 'Write', 'Edit']),
 }
 
 /** Argument keys each agent uses to name the file a write/edit tool targets. */

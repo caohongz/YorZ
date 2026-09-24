@@ -8,6 +8,15 @@ export {
 
 const [activeProjectId, setActiveProjectId] = createSignal(initialProjectIdFromUrl())
 
+/** Bumped when the agent kind changes so Chat can drop back to a draft session. */
+const [agentKindChangeTick, setAgentKindChangeTick] = createSignal(0)
+
+export function notifyAgentKindChange(): void {
+  setAgentKindChangeTick((v) => v + 1)
+}
+
+export { agentKindChangeTick }
+
 function initialProjectIdFromUrl(): string {
   if (typeof window === 'undefined') return ''
   const m = window.location.pathname.match(/^\/([^/]+)/)

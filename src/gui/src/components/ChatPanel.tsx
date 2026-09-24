@@ -38,7 +38,7 @@ import {
   type SlashCommandScope,
 } from '../lib/slash-commands.js'
 import { subscribeSessions } from '../lib/sse.js'
-import { activeProjectId } from '../lib/project.js'
+import { activeProjectId, agentKindChangeTick } from '../lib/project.js'
 import { clearRequestedChatSession, requestedChatSessionId } from '../lib/chat-session-request.js'
 import { focusMode, exitFocusMode } from '../lib/layout-focus.js'
 import {
@@ -338,6 +338,17 @@ export const ChatPanel: Component = () => {
       setRunningSids({})
       tx.resetAll()
       attachments.reset()
+    }),
+  )
+
+  // Drop to draft after an agent-kind change — old sessions keep their original kind.
+  createEffect(
+    on(agentKindChangeTick, () => {
+      if (!activeSid()) return
+      setActiveSid('')
+      tx.reset()
+      attachments.reset()
+      void refetchSessions()
     }),
   )
 

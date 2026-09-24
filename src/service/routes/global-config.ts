@@ -34,6 +34,8 @@ interface PutBody {
 export function createGlobalConfigRoutes(
   globalConfigPath?: string,
   powerController: PowerInhibitController = getPowerInhibitController(globalConfigPath),
+  /** When set, agent.defaultKind changes reload every cached project instance. */
+  onAgentDefaultChanged?: () => Promise<void>,
 ): Hono {
   const app = new Hono()
 
@@ -60,6 +62,7 @@ export function createGlobalConfigRoutes(
     if ('error' in parsed) return c.json({ error: parsed.error }, 400)
 
     const cfg = await loadGlobalConfig(globalConfigPath)
+    const prevDefaultKind = cfg.agent.defaultKind
     cfg.agent = parsed.agent
     cfg.notifications = parsed.notifications
     cfg.shortcuts = parsed.shortcuts
@@ -68,6 +71,13 @@ export function createGlobalConfigRoutes(
     cfg.customInstructions = parsed.customInstructions
     await saveGlobalConfig(cfg, globalConfigPath)
     await powerController.refresh()
+    // `inherit` 项目的 SessionManager.defaultKind 在 materialize 时定死；
+    // 不重载就会一直用旧 Agent 发消息。
+    if (cfg.agent.defaultKind !== prevDefaultKind) {
+      await onAgentDefaultChanged?.().catch(() => {
+        // best-effort — config is already saved
+      })
+    }
     return c.json({
       ok: true,
       config: {
@@ -97,9 +107,10 @@ function parseBody(value: unknown): PutBody | { error: string } {
     defaultKind !== 'claude' &&
     defaultKind !== 'opencode' &&
     defaultKind !== 'codex' &&
-    defaultKind !== 'pi'
+    defaultKind !== 'pi' &&
+    defaultKind !== 'mimo'
   ) {
-    return { error: 'agent.defaultKind must be claude | opencode | codex | pi' }
+    return { error: 'agent.defaultKind must be claude | opencode | codex | pi | mimo' }
   }
   const notifications = obj.notifications
   if (!notifications || typeof notifications !== 'object') {

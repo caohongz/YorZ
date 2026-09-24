@@ -47,7 +47,7 @@ export interface GlobalAgentConfig {
   defaultKind: GlobalAgentKind
 }
 
-export type GlobalAgentKind = 'claude' | 'opencode' | 'codex' | 'pi'
+export type GlobalAgentKind = 'claude' | 'opencode' | 'codex' | 'pi' | 'mimo'
 
 export interface GlobalNotificationsConfig {
   sessionEnd: SessionEndNotificationsConfig
@@ -229,7 +229,12 @@ function normalizeAgent(value: unknown): GlobalAgentConfig {
   if (!value || typeof value !== 'object') return { defaultKind: DEFAULT_GLOBAL_AGENT.defaultKind }
   const obj = value as Record<string, unknown>
   const defaultKind = obj.defaultKind
-  if (defaultKind === 'opencode' || defaultKind === 'codex' || defaultKind === 'pi') {
+  if (
+    defaultKind === 'opencode' ||
+    defaultKind === 'codex' ||
+    defaultKind === 'pi' ||
+    defaultKind === 'mimo'
+  ) {
     return { defaultKind }
   }
   return { defaultKind: 'claude' }
